@@ -33,8 +33,7 @@ export function AdminLoginClient() {
           <div className="w-14 h-14 rounded-xl overflow-hidden mb-4" style={{ border: "2px solid #A8CF36" }}>
             <Image src="/images/logo.jpg" alt="Logo" width={56} height={56} className="object-cover w-full h-full" />
           </div>
-          <p className="font-display font-semibold text-xl text-surface-800">Ca Canh Thanh Liem</p>
-          <p className="text-sm text-surface-400 mt-1">He thong quan tri</p>
+          <p className="font-display font-semibold text-xl text-surface-800">Cá Cảnh Thanh Liêm</p>
         </div>
 
         {error && (
@@ -46,7 +45,7 @@ export function AdminLoginClient() {
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-surface-700" htmlFor="login-u">Ten dang nhap</label>
+            <label className="text-sm font-medium text-surface-700" htmlFor="login-u">Tên đăng nhập</label>
             <div className="relative">
               <User size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" aria-hidden />
               <input id="login-u" type="text" value={form.username}
@@ -56,7 +55,7 @@ export function AdminLoginClient() {
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-surface-700" htmlFor="login-p">Mat khau</label>
+            <label className="text-sm font-medium text-surface-700" htmlFor="login-p">Mật khẩu</label>
             <div className="relative">
               <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" aria-hidden />
               <input id="login-p" type={showPw ? "text" : "password"} value={form.password}
@@ -74,13 +73,13 @@ export function AdminLoginClient() {
             className={cn("mt-1 h-12 w-full rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-surface-900 transition-all hover:brightness-95 active:scale-[0.99]", loading && "opacity-60 cursor-not-allowed")}
             style={{ backgroundColor: "#A8CF36" }}>
             {loading
-              ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Dang dang nhap...</>
-              : <>Dang nhap<ArrowRight size={16} aria-hidden /></>
+              ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Đăng đăng nhập...</>
+              : <>Đăng nhập<ArrowRight size={16} aria-hidden /></>
             }
           </button>
         </form>
         <p className="text-xs text-surface-400 text-center mt-8">
-          Mac dinh: <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">admin</code> / <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">TL@Admin2025</code>
+          Mặc định: <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">admin</code> / <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">TL@Admin2025</code>
         </p>
       </div>
     </div>
