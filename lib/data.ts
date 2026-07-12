@@ -1,4 +1,31 @@
 import type { Product, Category } from "@/types";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { supabaseConfig, SUPABASE_ENABLED } from "@/lib/supabase/config";
+
+// ============================================================
+// SUPABASE DATA SOURCE (Phase 2 — repository layer)
+// ------------------------------------------------------------
+// Public site reads use an isomorphic anon client created from the
+// pure config module (no next/headers), so this file stays importable
+// from both Server and Client Components. The RLS "public read"
+// policies gate what the anon role may see.
+//
+// Every repository function falls back to the mock data in this file
+// when Supabase is not configured or a query fails, so behaviour is
+// identical to Phase 1 until the database is populated. Repository
+// functions are async because Supabase queries are promise-based.
+// ============================================================
+let _readClient: SupabaseClient | null = null;
+
+function getReadClient(): SupabaseClient | null {
+  if (!SUPABASE_ENABLED || !supabaseConfig) return null;
+  if (!_readClient) {
+    _readClient = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return _readClient;
+}
 
 // ============================================================
 // MOCK PRODUCT DATA
@@ -230,6 +257,50 @@ export const MOCK_CATEGORIES: Category[] = [
   { slug: "ca-rong", name: "Cá Rồng", nameEn: "Arowana", description: "Loài cá quý hiếm nhất trong thế giới cá cảnh", count: 6 },
   { slug: "phu-kien", name: "Phụ Kiện", nameEn: "Accessories", description: "Thiết bị, thức ăn và phụ kiện hồ cá chuyên nghiệp", count: 30 },
 ];
+
+// ============================================================
+// CATEGORIES — Supabase repository
+// Mirrors the `categories` table (0003_tables_core.sql). Falls back
+// to MOCK_CATEGORIES when Supabase is unavailable.
+// ============================================================
+interface CategoryRow {
+  slug: string;
+  name: string;
+  name_en: string;
+  emoji: string | null;
+  description: string;
+  product_count: number;
+  image_url: string | null;
+}
+
+function mapCategoryRow(row: CategoryRow): Category {
+  return {
+    slug: row.slug,
+    name: row.name,
+    nameEn: row.name_en,
+    emoji: row.emoji ?? undefined,
+    description: row.description,
+    count: row.product_count,
+    imageUrl: row.image_url ?? undefined,
+  };
+}
+
+/**
+ * All categories, ordered by name. Reads from Supabase when configured,
+ * otherwise returns the mock list. Same Category[] shape as MOCK_CATEGORIES.
+ */
+export async function getCategories(): Promise<Category[]> {
+  const supabase = getReadClient();
+  if (!supabase) return [...MOCK_CATEGORIES];
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("slug, name, name_en, emoji, description, product_count, image_url")
+    .order("name", { ascending: true });
+
+  if (error || !data) return [...MOCK_CATEGORIES];
+  return (data as CategoryRow[]).map(mapCategoryRow);
+}
 
 // ============================================================
 // DATA HELPERS
