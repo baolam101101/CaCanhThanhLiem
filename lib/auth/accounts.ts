@@ -3,12 +3,14 @@
 // In production: replace with Supabase DB queries
 // ============================================================
 
+import bcrypt from "bcryptjs";
+
 export type AccountRole = "superadmin" | "staff";
 
 export interface Account {
   id: string;
   username: string;
-  passwordHash: string; // sha256 hex for simplicity (no bcrypt dep)
+  passwordHash: string; // bcrypt hash
   displayName: string;
   role: AccountRole;
   createdAt: string;
@@ -16,24 +18,20 @@ export interface Account {
   active: boolean;
 }
 
-// Simple hash — in production use bcrypt via Supabase Auth
-function simpleHash(s: string): string {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) {
-    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h).toString(16).padStart(8, "0");
-}
+// bcrypt cost factor — 10 rounds is the standard balance between
+// brute-force resistance and login latency for an admin panel.
+const BCRYPT_ROUNDS = 10;
 
 export function hashPassword(plain: string): string {
-  // Multi-round to slow brute force slightly
-  let h = plain + "cacanhTL_salt_2025";
-  for (let i = 0; i < 100; i++) h = simpleHash(h + plain);
-  return h;
+  return bcrypt.hashSync(plain, BCRYPT_ROUNDS);
 }
 
 export function verifyPassword(plain: string, hash: string): boolean {
-  return hashPassword(plain) === hash;
+  try {
+    return bcrypt.compareSync(plain, hash);
+  } catch {
+    return false;
+  }
 }
 
 // ---- Default account (superadmin) ----

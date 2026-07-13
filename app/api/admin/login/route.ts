@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Vui long nhap du thong tin" },
+        { error: "Vui lòng nhập đủ thông tin" },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     const account = findByUsername(username);
     if (!account || !verifyPassword(password, account.passwordHash)) {
       return NextResponse.json(
-        { error: "Ten dang nhap hoac mat khau khong dung" },
+        { error: "Tên đăng nhập hoặc mật khẩu không đúng" },
         { status: 401 }
       );
     }

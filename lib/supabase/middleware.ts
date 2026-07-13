@@ -24,7 +24,7 @@ export async function refreshSupabaseSession(
   // We need a mutable response to write refreshed cookies onto.
   // The caller passes in the response it has already prepared so we
   // augment it rather than creating a new one.
-  let mutableRes = res;
+  const mutableRes = res;
 
   const supabase = createServerClient(
     supabaseConfig.url,

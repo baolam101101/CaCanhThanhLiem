@@ -4,7 +4,7 @@ import { SUPABASE_ENABLED, refreshSupabaseSession } from "@/lib/supabase";
 
 const PUBLIC_ADMIN = ["/admin/login"];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (!pathname.startsWith("/admin")) return NextResponse.next();

@@ -155,12 +155,12 @@ export function AdminBannersClient() {
         <div className="flex flex-col gap-2.5">
           {sorted.map((b, i) => (
             <div key={b.id} className={cn("bg-white rounded-xl border shadow-card flex items-center gap-3 px-4 py-3 transition-opacity", !b.visible && "opacity-55")}>
-              <button onClick={() => setPreviewing(b)} className="shrink-0 rounded-lg overflow-hidden hover:ring-2 hover:ring-brand-300 transition-all" aria-label="Xem lon">
+              <button onClick={() => setPreviewing(b)} className="shrink-0 rounded-lg overflow-hidden hover:ring-2 hover:ring-brand-300 transition-all" aria-label="Xem lớn">
                 <Thumb b={b} />
               </button>
               <div className="flex-1 min-w-0">
                 {!b.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500 mb-0.5 inline-block">Ẩn</span>}
-                <p className="text-sm font-medium text-surface-800 truncate">{b.imageName ?? "Anh banner"}</p>
+                <p className="text-sm font-medium text-surface-800 truncate">{b.imageName ?? "Ảnh banner"}</p>
               </div>
               <div className="flex flex-col gap-0.5 shrink-0">
                 <button onClick={() => move(b.id, "up")} disabled={i === 0} className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>

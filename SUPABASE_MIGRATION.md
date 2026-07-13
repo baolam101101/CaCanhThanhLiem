@@ -73,11 +73,11 @@ Go to **Storage → New bucket** and create:
 
 | Bucket name | Public | Allowed MIME types |
 |---|---|---|
-| `product-images` | ✅ | image/jpeg, image/png, image/webp |
-| `product-videos` | ✅ | video/mp4, video/quicktime |
-| `banners` | ✅ | image/jpeg, image/png, image/webp |
-| `site-videos` | ✅ | video/mp4, video/quicktime |
-| `news-images` | ✅ | image/jpeg, image/png, image/webp |
+| `product-images` | Có | image/jpeg, image/png, image/webp |
+| `product-videos` | Có | video/mp4, video/quicktime |
+| `banners` | Có | image/jpeg, image/png, image/webp |
+| `site-videos` | Có | video/mp4, video/quicktime |
+| `news-images` | Có | image/jpeg, image/png, image/webp |
 
 ---
 

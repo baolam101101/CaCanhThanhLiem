@@ -11,12 +11,12 @@ interface Category {
 }
 
 const INITIAL: Category[] = [
-  { id:"c1", slug:"ca-koi",       name:"Ca Koi",       description:"Ca chep Koi Viet & Nhat nhap khau chinh hang", productCount:12, visible:true, order:1 },
-  { id:"c2", slug:"ca-dia",       name:"Ca Dia",       description:"Vua cua ca nhiet doi nuoc ngot",               productCount:8,  visible:true, order:2 },
-  { id:"c3", slug:"ca-la-han",    name:"Ca La Han",    description:"Bieu tuong may man va thinh vuong",             productCount:6,  visible:true, order:3 },
-  { id:"c4", slug:"ca-nhiet-doi", name:"Ca Nhiet Doi", description:"Da dang cac loai ca nhiet doi",                 productCount:20, visible:true, order:4 },
-  { id:"c5", slug:"ca-rong",      name:"Ca Rong",      description:"Loai ca quy hiem nhat trong the gioi ca canh",  productCount:4,  visible:true, order:5 },
-  { id:"c6", slug:"phu-kien",     name:"Phu Kien",     description:"Thiet bi, thuc an va phu kien ho ca",           productCount:30, visible:true, order:6 },
+  { id:"c1", slug:"ca-koi",       name:"Cá Koi",       description:"Cá chép Koi Việt & Nhật nhập khẩu chính hãng", productCount:12, visible:true, order:1 },
+  { id:"c2", slug:"ca-dia",       name:"Cá Đĩa",       description:"Vua của cá nhiệt đới nước ngọt",               productCount:8,  visible:true, order:2 },
+  { id:"c3", slug:"ca-la-han",    name:"Cá La Hán",    description:"Biểu tượng may mắn và thịnh vượng",             productCount:6,  visible:true, order:3 },
+  { id:"c4", slug:"ca-nhiet-doi", name:"Cá Nhiệt Đới", description:"Đa dạng các loài cá nhiệt đới",                 productCount:20, visible:true, order:4 },
+  { id:"c5", slug:"ca-rong",      name:"Cá Rồng",      description:"Loài cá quý hiếm nhất trong thế giới cá cảnh",  productCount:4,  visible:true, order:5 },
+  { id:"c6", slug:"phu-kien",     name:"Phụ Kiện",     description:"Thiết bị, thức ăn và phụ kiện hồ cá",           productCount:30, visible:true, order:6 },
 ];
 
 type ModalMode = "add" | "edit" | null;
@@ -39,15 +39,15 @@ export function AdminCategoriesClient() {
 
   const save = () => {
     const name = form.name.trim();
-    if (!name) { setErr("Vui long nhap ten danh muc"); return; }
+    if (!name) { setErr("Vui lòng nhập tên danh mục"); return; }
     const slug = slugify(name);
     if (mode === "add") {
-      if (cats.find((c) => c.slug === slug)) { setErr("Danh muc nay da ton tai"); return; }
+      if (cats.find((c) => c.slug === slug)) { setErr("Danh mục này đã tồn tại"); return; }
       setCats((p) => [...p, { id: `c_${Date.now()}`, slug, name, description: form.description, productCount: 0, visible: true, order: p.length + 1 }]);
-      msg(`Da them danh muc "${name}"`);
+      msg(`Đã thêm danh mục "${name}"`);
     } else if (editing) {
       setCats((p) => p.map((c) => c.id === editing.id ? { ...c, name, slug, description: form.description } : c));
-      msg(`Da cap nhat "${name}"`);
+      msg(`Đã cập nhật "${name}"`);
     }
     setMode(null); setEditing(null);
   };
@@ -55,9 +55,9 @@ export function AdminCategoriesClient() {
   const del = (id: string) => {
     const c = cats.find((x) => x.id === id);
     if (!c) return;
-    if (c.productCount > 0) { msg(`Khong the xoa — co ${c.productCount} san pham`); return; }
-    if (!confirm(`Xoa danh muc "${c.name}"?`)) return;
-    setCats((p) => p.filter((x) => x.id !== id)); msg(`Da xoa "${c.name}"`);
+    if (c.productCount > 0) { msg(`Không thể xóa — còn ${c.productCount} sản phẩm`); return; }
+    if (!confirm(`Xóa danh mục "${c.name}"?`)) return;
+    setCats((p) => p.filter((x) => x.id !== id)); msg(`Đã xóa "${c.name}"`);
   };
 
   const toggle = (id: string) => setCats((p) => p.map((c) => c.id === id ? { ...c, visible: !c.visible } : c));
@@ -90,7 +90,7 @@ export function AdminCategoriesClient() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <p className="font-semibold text-sm text-surface-800">{cat.name}</p>
-                {!cat.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500">An</span>}
+                {!cat.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500">Ẩn</span>}
                 <span className="text-[10px] text-surface-400 bg-surface-50 px-2 py-0.5 rounded-full">{cat.productCount} sp</span>
               </div>
               {cat.description && <p className="text-xs text-surface-500 truncate hidden sm:block">{cat.description}</p>}
@@ -101,9 +101,9 @@ export function AdminCategoriesClient() {
               <button onClick={() => move(cat.id, "down")} disabled={i === sorted.length - 1} className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-20 transition-all"><ArrowDown size={13} /></button>
             </div>
             <div className="flex items-center gap-1 pl-2 border-l border-surface-100 shrink-0">
-              <button onClick={() => open("edit", cat)} className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sua"><Edit2 size={14} /></button>
-              <button onClick={() => toggle(cat.id)} className="p-2 rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 transition-all">{cat.visible ? "An" : "Hien"}</button>
-              <button onClick={() => del(cat.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xoa"><Trash2 size={14} /></button>
+              <button onClick={() => open("edit", cat)} className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa"><Edit2 size={14} /></button>
+              <button onClick={() => toggle(cat.id)} className="p-2 rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 transition-all">{cat.visible ? "Ẩn" : "Hiện"}</button>
+              <button onClick={() => del(cat.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}
@@ -121,7 +121,7 @@ export function AdminCategoriesClient() {
               <div>
                 <label className="text-sm font-medium text-surface-700 block mb-1.5">Tên danh mục <span className="text-red-500">*</span></label>
                 <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="VD: Ca Koi Nhat Ban" autoFocus
+                  placeholder="VD: Cá Koi Nhật Bản" autoFocus
                   className="h-11 w-full rounded-xl border border-surface-200 px-4 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100 transition-all" />
               </div>
               <div>

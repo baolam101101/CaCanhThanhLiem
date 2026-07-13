@@ -1,4 +1,4 @@
-# 🐠 Cá Cảnh Thanh Liêm — Premium Ornamental Fish Website
+# Cá Cảnh Thanh Liêm — Premium Ornamental Fish Website
 
 A modern, premium Next.js 15 website for a Vietnamese ornamental fish store.
 

@@ -146,7 +146,7 @@ function FeaturedSection() {
                   </span>
                   <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                     {product.tags.includes("new")      && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: "#739620" }}>Mới về</span>}
-                    {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-orange-500">⭐ Nổi bật</span>}
+                    {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-orange-500">Nổi bật</span>}
                   </div>
                 </div>
                 <div className="p-4">

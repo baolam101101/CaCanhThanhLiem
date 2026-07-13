@@ -16,7 +16,7 @@ interface ProductsClientProps {
 const STATUS_FILTERS = [
   { key: "all",       label: "Tất cả" },
   { key: "new",       label: "Mới về" },
-  { key: "featured",  label: "⭐ Nổi bật" },
+  { key: "featured",  label: "Nổi bật" },
   { key: "available", label: "Còn hàng" },
 ] as const;
 

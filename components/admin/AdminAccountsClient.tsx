@@ -217,7 +217,7 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
               </div>
 
               <div className="p-3 rounded-xl bg-surface-50 text-xs text-surface-500">
-                ℹ Tài khoản mới sẽ có vai trò <strong>Nhân viên</strong> — có thể quản lý sản phẩm, video, banner nhưng không tạo/xóa tài khoản.
+                Tài khoản mới sẽ có vai trò <strong>Nhân viên</strong> — có thể quản lý sản phẩm, video, banner nhưng không tạo/xóa tài khoản.
               </div>
 
               <div className="flex gap-3 pt-1">

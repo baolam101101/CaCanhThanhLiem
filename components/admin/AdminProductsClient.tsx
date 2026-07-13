@@ -369,7 +369,7 @@ function ProductModal({ mode, product, onSave, onClose }: {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-surface-800">Mới về</p>
-                  <p className="text-xs text-surface-400">Hiển thị nhãn "Mới về" trên sản phẩm</p>
+                  <p className="text-xs text-surface-400">{'Hiển thị nhãn "Mới về" trên sản phẩm'}</p>
                 </div>
               </label>
             </div>

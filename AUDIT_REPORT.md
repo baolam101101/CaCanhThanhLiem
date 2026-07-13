@@ -159,11 +159,11 @@ PHẦN E — LỖI ADMIN DASHBOARD
 
 [CRITICAL] Mất toàn bộ dữ liệu khi refresh hoặc server restart
   Mọi thay đổi qua Admin đều mất:
-  ✗ Sản phẩm thêm/sửa/xóa
-  ✗ Danh mục thêm/sửa/xóa
-  ✗ Banner upload/cấu hình
-  ✗ Video upload
-  ✗ Tài khoản nhân viên tạo mới
+  - Sản phẩm thêm/sửa/xóa
+  - Danh mục thêm/sửa/xóa
+  - Banner upload/cấu hình
+  - Video upload
+  - Tài khoản nhân viên tạo mới
   Admin hoàn toàn không thể tin tưởng dashboard phản ánh trạng thái thực tế
 
 [CRITICAL] Tài khoản Admin không persistent

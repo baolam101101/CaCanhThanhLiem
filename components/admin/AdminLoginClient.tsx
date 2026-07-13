@@ -15,14 +15,14 @@ export function AdminLoginClient() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.username.trim() || !form.password.trim()) { setError("Vui long dien day du thong tin"); return; }
+    if (!form.username.trim() || !form.password.trim()) { setError("Vui lòng điền đầy đủ thông tin"); return; }
     setLoading(true); setError("");
     try {
       const res  = await fetch("/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Dang nhap that bai"); return; }
+      if (!res.ok) { setError(data.error ?? "Đăng nhập thất bại"); return; }
       router.push("/admin"); router.refresh();
-    } catch { setError("Khong the ket noi. Vui long thu lai."); }
+    } catch { setError("Không thể kết nối. Vui lòng thử lại."); }
     finally   { setLoading(false); }
   };
 
@@ -64,7 +64,7 @@ export function AdminLoginClient() {
                 className={cn("w-full h-12 pl-10 pr-12 rounded-xl border bg-white text-sm outline-none transition-all", "border-surface-200 hover:border-surface-300 focus:border-brand-500 focus:ring-3 focus:ring-brand-100", loading && "opacity-60")} />
               <button type="button" onClick={() => setShowPw((v) => !v)} disabled={loading}
                 className="absolute right-3.5 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600 p-1 rounded"
-                aria-label={showPw ? "An mat khau" : "Hien mat khau"}>
+                aria-label={showPw ? "Ẩn mật khẩu" : "Hiện mật khẩu"}>
                 {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
@@ -73,7 +73,7 @@ export function AdminLoginClient() {
             className={cn("mt-1 h-12 w-full rounded-xl text-sm font-semibold flex items-center justify-center gap-2 text-surface-900 transition-all hover:brightness-95 active:scale-[0.99]", loading && "opacity-60 cursor-not-allowed")}
             style={{ backgroundColor: "#A8CF36" }}>
             {loading
-              ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Đăng đăng nhập...</>
+              ? <><svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Đang đăng nhập...</>
               : <>Đăng nhập<ArrowRight size={16} aria-hidden /></>
             }
           </button>

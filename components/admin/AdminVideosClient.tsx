@@ -12,9 +12,9 @@ interface VideoItem {
 }
 
 const INITIAL: VideoItem[] = [
-  { id:"v1", title:"Ca Koi Nhat moi ve thang 5",   visible:true,  uploadedAt:new Date("2025-05-20") },
-  { id:"v2", title:"Ca Rong Bach Kim tai cua hang", visible:true,  uploadedAt:new Date("2025-05-18") },
-  { id:"v3", title:"Ca Dia Cobalt xanh",            visible:false, uploadedAt:new Date("2025-05-15") },
+  { id:"v1", title:"Cá Koi Nhật mới về tháng 5",   visible:true,  uploadedAt:new Date("2025-05-20") },
+  { id:"v2", title:"Cá Rồng Bạch Kim tại cửa hàng", visible:true,  uploadedAt:new Date("2025-05-18") },
+  { id:"v3", title:"Cá Đĩa Cobalt xanh",            visible:false, uploadedAt:new Date("2025-05-15") },
 ];
 
 export function AdminVideosClient() {
@@ -55,8 +55,8 @@ export function AdminVideosClient() {
     <div>
       <div className="flex items-center justify-between mb-6 md:mb-8 gap-3 flex-wrap">
         <div>
-          <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quan ly Video</h1>
-          <p className="text-sm text-surface-500 mt-1">{videos.filter((v)=>v.visible).length}/{videos.length} dang hien thi</p>
+          <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quản lý Video</h1>
+          <p className="text-sm text-surface-500 mt-1">{videos.filter((v)=>v.visible).length}/{videos.length} đang hiển thị</p>
         </div>
         <Button variant="primary" onClick={() => setShowForm(true)}><Plus size={15} /> Tạo video mới</Button>
       </div>
@@ -80,17 +80,17 @@ export function AdminVideosClient() {
               <p className="text-xs text-surface-400 mt-0.5">{v.uploadedAt.toLocaleDateString("vi-VN")}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <button onClick={() => toggle(v.id)} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title={v.visible?"An":"Hien"}>
+              <button onClick={() => toggle(v.id)} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title={v.visible?"Ẩn":"Hiện"}>
                 {v.visible?<EyeOff size={15} aria-hidden />:<Eye size={15} aria-hidden />}
               </button>
-              <button onClick={() => del(v.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xoa"><Trash2 size={15} aria-hidden /></button>
+              <button onClick={() => del(v.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa"><Trash2 size={15} aria-hidden /></button>
             </div>
           </div>
         ))}
         {videos.length===0&&(
           <div className="text-center py-16 text-surface-400">
             <Video size={40} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Chưa có video nào. Bấm "Tạo video mới" để bắt đầu.</p>
+            <p className="text-sm">{'Chưa có video nào. Bấm "Tạo video mới" để bắt đầu.'}</p>
           </div>
         )}
       </div>
@@ -114,7 +114,7 @@ export function AdminVideosClient() {
                   <div className="flex flex-col items-center gap-2">
                     <video src={form.dataUrl} className="w-full max-h-32 rounded-lg object-contain bg-black" muted playsInline controls onClick={(e)=>e.stopPropagation()} />
                     <p className="text-xs text-surface-500">{form.fileName}</p>
-                    <p className="text-xs text-brand-600">Bam de doi video khac</p>
+                    <p className="text-xs text-brand-600">Bấm để đổi video khác</p>
                   </div>
                 ) : (
                   <>

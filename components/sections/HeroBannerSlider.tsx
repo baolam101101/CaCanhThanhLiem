@@ -113,7 +113,7 @@ export function HeroBannerSlider({ slides }: Props) {
         style={{ height: "clamp(160px,30vw,280px)", background: "linear-gradient(135deg,#A8CF36 0%,#557318 100%)" }}>
         <div className="flex flex-col items-center gap-2 text-center px-6">
           <ImageIcon size={28} className="text-white/70" aria-hidden />
-          <p className="font-display font-semibold text-white" style={{ fontSize: "clamp(1rem,3vw,1.5rem)" }}>Ca Canh Thanh Liem</p>
+          <p className="font-display font-semibold text-white" style={{ fontSize: "clamp(1rem,3vw,1.5rem)" }}>Cá Cảnh Thanh Liêm</p>
         </div>
       </div>
     );
@@ -138,11 +138,11 @@ export function HeroBannerSlider({ slides }: Props) {
       ))}
       {total > 1 && (
         <>
-          <button onClick={goPrev} aria-label="Slide truoc"
+          <button onClick={goPrev} aria-label="Slide trước"
             className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/25 hover:bg-black/40 text-white items-center justify-center transition-colors backdrop-blur-sm">
             <ChevronLeft size={16} aria-hidden />
           </button>
-          <button onClick={goNext} aria-label="Slide tiep theo"
+          <button onClick={goNext} aria-label="Slide tiếp theo"
             className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-black/25 hover:bg-black/40 text-white items-center justify-center transition-colors backdrop-blur-sm">
             <ChevronRight size={16} aria-hidden />
           </button>

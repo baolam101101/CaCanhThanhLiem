@@ -20,12 +20,13 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-5">
-              <div className="relative w-14 h-14 shrink-0">
+              <div className="relative w-14 h-14 shrink-0 rounded-full bg-white p-1 shadow-md ring-1 ring-black/10">
                 <Image
                   src="/images/logo.jpg"
                   alt="Logo Cá Cảnh Thanh Liêm"
-                  fill
-                  className="object-cover rounded-full border-2 border-white/60 shadow"
+                  width={56}
+                  height={56}
+                  className="w-full h-full object-cover rounded-full"
                   sizes="56px"
                 />
               </div>
