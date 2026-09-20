@@ -1,21 +1,21 @@
 export const SITE_CONFIG = {
   name: "Cá Cảnh Thanh Liêm",
   nameEn: "Ca Canh Thanh Liem",
-  tagline: "Chuyên Cung Cấp Cá Chép Koi Việt - Nhập",
+  tagline: "Trang trại Cá Cảnh chuyên cung cấp sỉ lẻ Cá Koi & Koi Đuôi Dài chất lượng tại TP.HCM",
   description:
     "Chuyên cung cấp các dòng cá chép Koi Việt - Nhập khẩu chất lượng cao tại Bình Chánh, TP.HCM.",
   url: "https://cacanhthanhliem.com",
-  phone: "0909 633 203",
-  phone2: "0931 44 42 40",
+  phone: "0931 444 240",
   phoneHref: "tel:+84909633203",
   email: "info@cacanhthanhliem.com",
-  address: "223A2 Nguyễn Văn Linh - Tổ 9 - Ấp 1 - Xã An Phú Tây - Huyện Bình Chánh",
+  address: "Địa chỉ cũ: 223A2 Nguyễn Văn Linh - Tổ 9 - Ấp 1 - Xã An Phú Tây - Huyện Bình Chánh",
+  newAddress: "Địa chỉ mới: 223A3/9 ấp 36, Xã Bình Chánh, TP.HCM",
   addressShort: "223A2 Nguyễn Văn Linh, Bình Chánh, TP.HCM",
   googleMapsUrl: "https://maps.google.com",
-  hours: "7:00 - 20:00 (Tất cả các ngày trong tuần)",
+  hours: "7:30 - 17:30 (T2 -> CN & ngày Lễ)",
   facebook: "https://facebook.com/CaCanhThanhLiem",
   zalo: "https://zalo.me/0909633203",
-  website: "www.cacanhthanhliem.com",
+  website: "www.cacanhthanhliem.vn",
   founded: 2009,
 } as const;
 
@@ -56,7 +56,7 @@ export const ORDER_STATUSES = {
 
 export const TRUST_ITEMS = [
   { icon: "", text: "Cá Koi chất lượng cao" },
-  { icon: "", text: "Nguồn gốc rõ ràng" },
+  { icon: "", text: "Nguồn tận Trại" },
   { icon: "", text: "Giao hàng toàn quốc" },
   { icon: "", text: "Tư vấn chuyên nghiệp" },
 ] as const;

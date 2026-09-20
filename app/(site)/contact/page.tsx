@@ -12,10 +12,11 @@ export const metadata: Metadata = {
 const CONTACT_METHODS = [
   {
     icon: <MapPin size={20} />,
-    title: "Địa chỉ cửa hàng",
+    title: "Cửa hàng",
     value: SITE_CONFIG.address,
+    newValue: SITE_CONFIG.newAddress,
     href: `https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.address)}`,
-    note: "Mở cửa 7:00 - 20:00, tất cả các ngày",
+    note: "Mở cửa 7:30 - 17:30, tất cả các ngày",
     external: true,
   },
   {
@@ -23,7 +24,7 @@ const CONTACT_METHODS = [
     title: "Điện thoại / Zalo",
     value: SITE_CONFIG.phone,
     href: SITE_CONFIG.phoneHref,
-    note: "Hỗ trợ 7:00 - 20:00 hàng ngày",
+    note: "Hỗ trợ 7:30 - 17:30 hàng ngày",
     external: false,
   },
   {
@@ -31,7 +32,6 @@ const CONTACT_METHODS = [
     title: "Email",
     value: SITE_CONFIG.email,
     href: `mailto:${SITE_CONFIG.email}`,
-    note: "Phản hồi trong vòng 2 giờ",
     external: false,
   },
   {
@@ -47,7 +47,6 @@ const CONTACT_METHODS = [
     title: "Giờ mở cửa",
     value: SITE_CONFIG.hours,
     href: null,
-    note: "Kể cả ngày lễ và cuối tuần",
     external: false,
   },
 ];
@@ -102,6 +101,11 @@ export default function ContactPage() {
                         ) : (
                           <p className="text-surface-800 font-semibold text-base">{method.value}</p>
                         )}
+                        {"newValue" in method && method.newValue && (
+                          <p className="text-brand-600 font-semibold hover:text-brand-700 transition-colors text-base">
+                            {method.newValue}
+                          </p>
+                        )}
                         {method.note && (
                           <p className="text-sm text-surface-400 mt-0.5">{method.note}</p>
                         )}
@@ -114,7 +118,6 @@ export default function ContactPage() {
               {/* Map placeholder */}
               <div className="mt-8 rounded-2xl overflow-hidden border border-surface-200 aspect-[16/9] bg-gradient-to-br from-brand-50 to-surface-100 flex items-center justify-center">
                 <div className="text-center">
-                  <span className="text-5xl block mb-3" aria-hidden></span>
                   <p className="text-sm text-surface-500 font-medium">Bản đồ Google Maps</p>
                   <a
                     href={`https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.address)}`}

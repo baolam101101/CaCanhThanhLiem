@@ -8,7 +8,7 @@
 -- ============================================================
 
 -- ── categories ───────────────────────────────────────────────
--- Source: interface Category { slug, name, nameEn, emoji?, description, count, imageUrl? }
+-- Source: interface Category { slug, name, nameEn, description, count, imageUrl? }
 -- `slug` uses the closed category_slug enum and is the natural key the
 -- products table references via foreign key. `count` from the entity is
 -- a denormalised product tally kept as product_count.
@@ -17,7 +17,6 @@ create table categories (
   slug          category_slug not null unique,
   name          text          not null,
   name_en       text          not null,
-  emoji         text,
   description   text          not null default '',
   product_count integer       not null default 0,
   image_url     text,

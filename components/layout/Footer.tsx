@@ -20,13 +20,12 @@ export function Footer() {
           {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-5">
-              <div className="relative w-14 h-14 shrink-0 rounded-full bg-white p-1 shadow-md ring-1 ring-black/10">
+              <div className="relative w-14 h-14 shrink-0">
                 <Image
                   src="/images/logo.jpg"
                   alt="Logo Cá Cảnh Thanh Liêm"
-                  width={56}
-                  height={56}
-                  className="w-full h-full object-cover rounded-full"
+                  fill
+                  className="object-cover rounded-full border-2 border-white/60 shadow"
                   sizes="56px"
                 />
               </div>
@@ -40,7 +39,7 @@ export function Footer() {
               </div>
             </div>
             <p className="text-sm leading-relaxed text-surface-800 max-w-[260px]">
-              {SITE_CONFIG.tagline}. Chất lượng tốt nhất, giá hợp lý nhất tại TP.HCM.
+              {SITE_CONFIG.tagline}
             </p>
             {/* Social — using each platform's official brand color */}
             <div className="flex items-center gap-3 mt-5">
@@ -65,8 +64,8 @@ export function Footer() {
                 style={{ backgroundColor: "#0068FF" }}
                 aria-label="Zalo"
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="white" aria-hidden>
-                  <path d="M12.49 10.2722v-.4496h1.3467v6.3218h-.7704a.576.576 0 01-.5763-.5729l-.0006.0005a3.273 3.273 0 01-1.9372.6321c-1.8138 0-3.2844-1.4697-3.2844-3.2823 0-1.8125 1.4706-3.2822 3.2844-3.2822a3.273 3.273 0 011.9372.6321l.0006.0005zM6.9188 7.7896v.205c0 .3823-.051.6944-.2995 1.0605l-.03.0343c-.0542.0615-.1815.206-.2421.2843L2.024 14.8h4.8948v.7682a.5764.5764 0 01-.5767.5761H0v-.3622c0-.4436.1102-.6414.2495-.8476L4.8582 9.23H.1922V7.7896h6.7266zm8.5513 8.3548a.4805.4805 0 01-.4803-.4798v-7.875h1.4416v8.3548H15.47zM20.6934 9.6C22.52 9.6 24 11.0807 24 12.9044c0 1.8252-1.4801 3.306-3.3066 3.306-1.8264 0-3.3066-1.4808-3.3066-3.306 0-1.8237 1.4802-3.3044 3.3066-3.3044zm-10.1412 5.253c1.0675 0 1.9324-.8645 1.9324-1.9312 0-1.065-.865-1.9295-1.9324-1.9295s-1.9324.8644-1.9324 1.9295c0 1.0667.865 1.9312 1.9324 1.9312zm10.1412-.0033c1.0737 0 1.945-.8707 1.945-1.9453 0-1.073-.8713-1.9436-1.945-1.9436-1.0753 0-1.945.8706-1.945 1.9436 0 1.0746.8697 1.9453 1.945 1.9453z"/>
+                <svg viewBox="0 0 48 48" width="22" height="22" fill="white" aria-hidden>
+                  <path d="M24 4C12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20S35.05 4 24 4zm-2.5 28.5h-3v-14h3v14zm8.5 0l-6-8v8h-3v-14h3l6 8v-8h3v14h-3z"/>
                 </svg>
               </a>
 
@@ -126,7 +125,7 @@ export function Footer() {
                 { label: "Sản phẩm", href: "/products" },
                 { label: "Liên hệ", href: "/contact" },
                 { label: "Chính sách bảo hành", href: "/contact" },
-                { label: "Hướng dẫn chăm sóc Koi", href: "/about" },
+                { label: "Hướng dẫn chăm sóc cá Koi", href: "/about" },
               ].map((l) => (
                 <li key={l.href + l.label}>
                   <Link href={l.href} className="text-sm text-surface-800 hover:text-surface-900 font-medium transition-colors hover:translate-x-0.5 inline-block">
@@ -155,10 +154,21 @@ export function Footer() {
                 </a>
               </li>
               <li>
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.newAddress)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="flex gap-3 group"
+                >
+                  <MapPin size={15} className="text-surface-700 mt-0.5 shrink-0" aria-hidden />
+                  <span className="text-sm text-surface-800 group-hover:text-surface-900 transition-colors leading-relaxed">
+                    {SITE_CONFIG.newAddress}
+                  </span>
+                </a>
+              </li>
+              <li>
                 <a href={SITE_CONFIG.phoneHref} className="flex items-center gap-3 group">
                   <Phone size={15} className="text-surface-700 shrink-0" aria-hidden />
                   <span className="text-sm text-surface-800 group-hover:text-surface-900 transition-colors font-medium">
-                    {SITE_CONFIG.phone} · {SITE_CONFIG.phone2}
+                    {SITE_CONFIG.phone}
                   </span>
                 </a>
               </li>

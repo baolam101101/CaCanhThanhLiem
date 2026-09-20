@@ -42,7 +42,6 @@ export interface Product {
   latin: string;       // Scientific name
   category: string;    // Category display name
   categorySlug: CategorySlug;
-  emoji?: string;
   status: ProductStatus;
   tags: ProductTag[];
   description: string;
@@ -61,7 +60,6 @@ export interface Category {
   slug: string;
   name: string;
   nameEn: string;
-  emoji?: string;
   description: string;
   count: number;
   imageUrl?: string;

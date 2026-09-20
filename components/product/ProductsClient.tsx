@@ -84,7 +84,6 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
               )}
               style={activeCategory === cat.slug ? { backgroundColor: "#A8CF36", borderColor: "#A8CF36" } : {}}
             >
-              <span aria-hidden>{cat.emoji}</span>
               {cat.name}
             </button>
           ))}

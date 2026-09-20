@@ -63,7 +63,7 @@ export function Navbar() {
                 </span>
                 <span className="font-semibold tracking-wider uppercase hidden sm:block mt-0.5"
                   style={{ fontSize: 10, color: "#8fb82a" }}>
-                  Koi Việt · Nhập Khẩu
+                  TRANG TRẠI CÁ KOI - KOI ĐUÔI DÀI
                 </span>
               </div>
             </Link>
@@ -144,7 +144,7 @@ export function Navbar() {
               <a href={SITE_CONFIG.phoneHref}
                 className="flex items-center justify-center gap-2 mx-1 py-3.5 rounded-xl text-sm font-semibold text-surface-900"
                 style={{ backgroundColor: "#A8CF36" }}>
-                <Phone size={15} /> {SITE_CONFIG.phone} · {SITE_CONFIG.phone2}
+                <Phone size={15} /> {SITE_CONFIG.phone}
               </a>
             </div>
           </nav>

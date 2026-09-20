@@ -7,19 +7,18 @@ import { cn } from "@/lib/utils";
 /* In production these come from Supabase/admin panel.
    For now we use placeholder slots that show upload UI in admin context. */
 const PLACEHOLDER_VIDEOS = [
-  { id: "v1", title: "Cá Koi Nhật Nhập Khẩu", emoji: "", duration: "0:45" },
-  { id: "v2", title: "Cá Rồng Bạch Kim",       emoji: "", duration: "1:02" },
-  { id: "v3", title: "Cá Đĩa Cobalt Xanh",     emoji: "", duration: "0:38" },
+  { id: "v1", title: "Cá Koi Nhật Nhập Khẩu", duration: "0:45" },
+  { id: "v2", title: "Cá Rồng Bạch Kim", duration: "1:02" },
+  { id: "v3", title: "Cá Đĩa Cobalt Xanh", duration: "0:38" },
 ];
 
 interface VideoCardProps {
   title: string;
-  emoji: string;
   duration: string;
   index: number;
 }
 
-function VideoCard({ title, emoji, duration, index }: VideoCardProps) {
+function VideoCard({ title, duration, index }: VideoCardProps) {
   const [playing, setPlaying] = useState(false);
 
   /* Gradient backgrounds cycling through brand palette */
@@ -49,7 +48,7 @@ function VideoCard({ title, emoji, duration, index }: VideoCardProps) {
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 translate-x-10 -translate-y-10" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/10 -translate-x-8 translate-y-8" />
 
-        {/* Emoji / fish graphic */}
+        {/* fish graphic */}
         <span
           className={cn(
             "text-[72px] select-none relative z-10",
@@ -58,7 +57,6 @@ function VideoCard({ title, emoji, duration, index }: VideoCardProps) {
           )}
           aria-hidden
         >
-          {emoji}
         </span>
 
         {/* Play/pause overlay */}
@@ -107,13 +105,13 @@ export function VideoShowcase() {
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
         {PLACEHOLDER_VIDEOS.map((v, i) => (
-          <VideoCard key={v.id} title={v.title} emoji={v.emoji} duration={v.duration} index={i} />
+          <VideoCard key={v.id} title={v.title} duration={v.duration} index={i} />
         ))}
       </div>
 
       {/* Note about admin upload */}
       <p className="text-center text-sm text-surface-400 mt-6 italic">
-         Video được cập nhật thường xuyên từ cửa hàng — quản lý qua trang Admin
+         Video được cập nhật thường xuyên từ cửa hàng
       </p>
     </div>
   );

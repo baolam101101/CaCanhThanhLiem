@@ -97,7 +97,6 @@ export function AdminDashboard({ stats, recentProducts, role }: AdminDashboardPr
                 className={`flex items-center gap-3 px-5 py-3.5 ${i < recentProducts.length - 1 ? "border-b border-surface-50" : ""}`}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl shrink-0"
                   style={{ backgroundColor: "#f6fbea" }}>
-                  {p.emoji}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-surface-800 truncate">{p.name}</p>

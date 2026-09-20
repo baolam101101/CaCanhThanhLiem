@@ -24,9 +24,6 @@ export function CategoryGrid({ categories }: CategoryGridProps) {
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
             )}
           >
-            <span className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300" aria-hidden>
-              {cat.emoji}
-            </span>
             <span className="text-sm font-semibold text-surface-700 group-hover:text-brand-700 mb-1">{cat.name}</span>
             <span className="text-xs text-surface-400">{cat.count > 0 ? `${cat.count} loài` : "Xem thêm"}</span>
           </Link>

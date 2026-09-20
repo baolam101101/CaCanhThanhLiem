@@ -46,14 +46,13 @@ function HeroSection() {
       {/* Nature intro text — below slider */}
       <div className="py-5 md:py-8 px-4" style={{ background: "linear-gradient(160deg,#f6fbea,#ffffff)" }}>
         <div className="max-w-3xl mx-auto text-center">
-          <p className="text-eyebrow mb-3">Thế giới cá cảnh</p>
+          <p className="text-eyebrow mb-3">Trang Trại</p>
           <h2 className="font-display font-light text-surface-800 mb-4" style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)" }}>
-            Vẻ đẹp <em className="italic" style={{ color: "#739620" }}>thiên nhiên</em> trong ngôi nhà bạn
+            <em className="italic" style={{ color: "#739620" }}>CÁ CẢNH THANH LIÊM</em>
           </h2>
           <p className="text-sm md:text-base text-surface-500 leading-relaxed max-w-xl mx-auto">
-            Mỗi con cá cảnh là một tác phẩm nghệ thuật sống — mang màu sắc của đại dương, sự thanh thản của thiên nhiên 
-            và vẻ đẹp kỳ diệu của sự sống vào không gian của bạn. Tại Cá Cảnh Thanh Liêm, chúng tôi tuyển chọn kỹ lưỡng 
-            từng loài cá để mang đến cho bạn những người bạn đồng hành tuyệt vời nhất.
+            Trang trại nuôi dưỡng & tuyển chọn kỹ lưỡng những "tác phẩm nghệ thuật sống" chất lượng, 
+            khỏe mạnh để mang đến cho Quý Khách những người bạn đồng hành tuyệt vời.
           </p>
         </div>
       </div>
@@ -64,9 +63,9 @@ function HeroSection() {
 /* ── Trust strip ── */
 function TrustStrip() {
   const items = [
-    { icon: <ShieldCheck size={17} />, text: "Cá Koi khỏe mạnh" },
+    { icon: <ShieldCheck size={17} />, text: "Cá Cảnh khỏe mạnh" },
     { icon: <Truck size={17} />,        text: "Giao hàng toàn quốc" },
-    { icon: <MessageCircle size={17} />,text: "Tư vấn 24/7" },
+    { icon: <MessageCircle size={17} />,text: "Tư vấn tận tình" },
   ];
   return (
     <div style={{ backgroundColor: "#A8CF36" }} className="py-3.5 md:py-4">
@@ -92,7 +91,7 @@ function VideoSection() {
         <SectionHeader
           eyebrow="Cá cảnh của chúng tôi"
           title={<>Video <em className="italic" style={{ color: "#8fb82a" }}>thực tế</em> tại cửa hàng</>}
-          description="Cá tươi sống, khỏe mạnh — cập nhật thường xuyên từ cửa hàng Thanh Liêm."
+          description="Cá Cảnh thuần dưỡng kỹ càng - cập nhập thường xuyên từ Trang Trại."
           className="mb-8 md:mb-10"
         />
         <VideoShowcase />
@@ -108,7 +107,7 @@ function CategoriesSection() {
       <div className="container-site">
         <SectionHeader
           eyebrow="Danh mục"
-          title={<>Khám phá <em className="italic" style={{ color: "#8fb82a" }}>bộ sưu tập</em></>}
+          title={<><em className="italic" style={{ color: "#8fb82a" }}>Khám phá bộ sưu tập Cá Cảnh trực tiếp tại Trang Trại Cá Cảnh Thanh Liêm</em></>}
           description="Cá Koi Nhật, cá nhiệt đới, cá la hán và nhiều loài quý hiếm khác."
           className="mb-8 md:mb-10"
         />
@@ -141,12 +140,9 @@ function FeaturedSection() {
                 )}>
                 <div className="relative aspect-[4/3] flex items-center justify-center overflow-hidden"
                   style={{ background: "linear-gradient(135deg,#f6fbea,#ebf5d0)" }}>
-                  <span className="text-[64px] md:text-[72px] group-hover:scale-110 transition-transform duration-400 select-none" aria-hidden>
-                    {product.emoji}
-                  </span>
                   <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                     {product.tags.includes("new")      && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: "#739620" }}>Mới về</span>}
-                    {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-orange-500">Nổi bật</span>}
+                    {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-orange-500">⭐ Nổi bật</span>}
                   </div>
                 </div>
                 <div className="p-4">
@@ -178,8 +174,8 @@ function FeaturedSection() {
 /* ── Why Us ── */
 function WhyUsSection() {
   const items = [
-    { title: "Kiểm dịch nghiêm ngặt",  desc: "Mọi cá đều qua kiểm tra sức khỏe và cách ly trước khi bán ra." },
-    { title: "Nguồn gốc rõ ràng",       desc: "Nhập khẩu trực tiếp từ trang trại Koi uy tín Nhật Bản và Việt Nam." },
+    { title: "Kiểm dịch nghiêm ngặt",  desc: "mọi cá thể đều qua kiểm tra sức khỏe kỹ lưỡng & cách ly trước khi bán ra" },
+    { title: "Nguồn tận Trại",       desc: "Cá giống bố mẹ tuyển chọn gen tốt nổi trội để lai tạo bản sao F1 nâng cấp đẹp từ trong trứng & thuần dưỡng nước máy thủy cục" },
     { title: "Chuyên gia tư vấn",     desc: "Đội ngũ nhiều năm kinh nghiệm hỗ trợ chọn cá và chăm sóc." },
     { title: "Đóng gói chuyên nghiệp",  desc: "Hệ thống đóng gói đặc biệt đảm bảo cá an toàn khi giao hàng." },
   ];
@@ -214,7 +210,7 @@ function CTABanner() {
           Không tìm thấy cá bạn muốn?
         </h2>
         <p className="text-surface-800 text-sm md:text-base mb-6 max-w-md mx-auto">
-          Liên hệ trực tiếp — chúng tôi có thể nhập theo yêu cầu đặc biệt.
+          Liên hệ trực tiếp - chúng tôi hỗ trợ tư vấn theo yêu cầu của bạn.
         </p>
         <div className="flex flex-col sm:flex-row justify-center gap-3">
           <Link href="/contact" className="px-6 py-3 rounded-xl text-sm font-semibold bg-white text-surface-900 hover:bg-surface-50 transition-colors shadow-sm">

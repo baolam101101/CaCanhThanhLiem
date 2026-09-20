@@ -267,7 +267,6 @@ interface CategoryRow {
   slug: string;
   name: string;
   name_en: string;
-  emoji: string | null;
   description: string;
   product_count: number;
   image_url: string | null;
@@ -278,7 +277,6 @@ function mapCategoryRow(row: CategoryRow): Category {
     slug: row.slug,
     name: row.name,
     nameEn: row.name_en,
-    emoji: row.emoji ?? undefined,
     description: row.description,
     count: row.product_count,
     imageUrl: row.image_url ?? undefined,
@@ -295,7 +293,7 @@ export async function getCategories(): Promise<Category[]> {
 
   const { data, error } = await supabase
     .from("categories")
-    .select("slug, name, name_en, emoji, description, product_count, image_url")
+    .select("slug, name, name_en, description, product_count, image_url")
     .order("name", { ascending: true });
 
   if (error || !data) return [...MOCK_CATEGORIES];

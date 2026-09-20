@@ -7,7 +7,7 @@
 
 -- ── products ─────────────────────────────────────────────────
 -- Source: interface Product { id, slug, name, nameEn?, latin, category,
---   categorySlug, emoji?, status, tags[], description, longDescription?,
+--   categorySlug, status, tags[], description, longDescription?,
 --   specs, images?, createdAt, updatedAt, viewCount? }
 --
 -- Normalisation notes:
@@ -24,7 +24,6 @@ create table products (
   name_en              text,
   latin                text          not null,
   category_slug        category_slug not null references categories (slug) on update cascade on delete restrict,
-  emoji                text,
   status               product_status not null default 'available',
   tags                 product_tag[] not null default '{}',
   description          text          not null,

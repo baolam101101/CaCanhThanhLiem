@@ -439,7 +439,6 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
         id: String(Date.now()), slug, name: data.name, latin: "",
         category: data.category,
         categorySlug: (MOCK_CATEGORIES.find((c) => c.name === data.category)?.slug ?? "ca-koi") as CategorySlug,
-        emoji: "",
         status: data.status, tags, description: data.description,
         specs: { size:"", temperature:"", ph:"", origin:"", minTankSize:"", careLevel:"Dễ chăm sóc" },
         createdAt: new Date(), updatedAt: new Date(),
@@ -494,7 +493,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                 <tr key={p.id} className={cn("hover:bg-surface-50 transition-colors", i < filtered.length - 1 && "border-b border-surface-100")}>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
-                      {/* Image thumbnail — no emoji */}
+                      {/* Image thumbnail */}
                       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-surface-200">
                         <ProductThumbnail name={p.name} />
                       </div>

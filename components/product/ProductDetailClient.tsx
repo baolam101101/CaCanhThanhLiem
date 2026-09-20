@@ -11,7 +11,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
   const isOut = product.status === "out_of_stock";
 
   // Ready for real Supabase-backed image arrays. Until then we render
-  // a fixed set of neutral placeholder slots (not numbers, not emoji,
+  // a fixed set of neutral placeholder slots (not numbers,
   // not the product name) that visually resemble real photo thumbnails.
   const images = (product as { images?: string[] }).images ?? [];
   const slotCount = 4;
@@ -38,7 +38,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
           )}
         </div>
 
-        {/* Thumbnails — realistic photo-style placeholders, no numbers/emoji */}
+        {/* Thumbnails — realistic photo-style placeholders, no numbers/ */}
         <div className="flex gap-3">
           {Array.from({ length: slotCount }).map((_, i) => {
             const thumbUrl = images[i];
@@ -130,8 +130,6 @@ export function ProductDetailClient({ product }: { product: Product }) {
         <div className="flex items-center gap-4 pt-4 border-t border-surface-100 flex-wrap text-sm">
           <span className="text-surface-400">Hotline:</span>
           <a href={SITE_CONFIG.phoneHref} className="font-semibold hover:underline" style={{ color: "#739620" }}>{SITE_CONFIG.phone}</a>
-          <span className="text-surface-300">·</span>
-          <a href={`tel:${SITE_CONFIG.phone2.replace(/\s/g,"")}`} className="font-semibold hover:underline" style={{ color: "#739620" }}>{SITE_CONFIG.phone2}</a>
         </div>
       </div>
     </div>
