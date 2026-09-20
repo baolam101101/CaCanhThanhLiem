@@ -54,7 +54,7 @@ This creates all 9 tables:
 -- Run in Supabase SQL Editor
 -- Replace with real email and password
 SELECT supabase_admin.create_user(
-  email    := 'admin@cacanhthanhliem.com',
+  email    := 'admin@cacanhthanhliem.vn',
   password := 'TL@Admin2025',
   user_metadata := '{
     "display_name": "Nguyễn Thanh Liêm",

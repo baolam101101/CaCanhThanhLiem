@@ -12,11 +12,11 @@ PHẦN 1: AUDIT TOÀN BỘ SOURCE CODE
 
 [CRITICAL] lib/constants.ts — SITE_CONFIG
   Toàn bộ thông tin cửa hàng hardcode:
-  - phone: "0909 633 203", phone2: "0931 44 42 40"
+  - phone: "0931 444 240",
   - address: "223A2 Nguyễn Văn Linh..."
-  - email: "info@cacanhthanhliem.com"
+  - email: "info@cacanhthanhliem.vn"
   - facebook: "https://facebook.com/CaCanhThanhLiem"
-  - zalo: "https://zalo.me/0909633203"
+  - zalo: "https://zalo.me/0931444240"
   - hours: "7:00 - 20:00 (Tất cả các ngày trong tuần)"
   - founded: 2009
   → Chủ cửa hàng không thể tự đổi số điện thoại, giờ mở cửa.

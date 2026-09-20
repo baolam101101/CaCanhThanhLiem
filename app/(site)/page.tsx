@@ -91,7 +91,7 @@ function VideoSection() {
         <SectionHeader
           eyebrow="Cá cảnh của chúng tôi"
           title={<>Video <em className="italic" style={{ color: "#8fb82a" }}>thực tế</em> tại cửa hàng</>}
-          description="Cá Cảnh thuần dưỡng kỹ càng - cập nhập thường xuyên từ Trang Trại."
+          description="Cá Cảnh thuần dưỡng kỹ càng - cập nhật thường xuyên từ Trang Trại."
           className="mb-8 md:mb-10"
         />
         <VideoShowcase />
@@ -174,7 +174,7 @@ function FeaturedSection() {
 /* ── Why Us ── */
 function WhyUsSection() {
   const items = [
-    { title: "Kiểm dịch nghiêm ngặt",  desc: "mọi cá thể đều qua kiểm tra sức khỏe kỹ lưỡng & cách ly trước khi bán ra" },
+    { title: "Kiểm dịch nghiêm ngặt",  desc: "Mọi cá thể đều qua kiểm tra sức khỏe kỹ lưỡng & cách ly trước khi bán ra." },
     { title: "Nguồn tận Trại",       desc: "Cá giống bố mẹ tuyển chọn gen tốt nổi trội để lai tạo bản sao F1 nâng cấp đẹp từ trong trứng & thuần dưỡng nước máy thủy cục" },
     { title: "Chuyên gia tư vấn",     desc: "Đội ngũ nhiều năm kinh nghiệm hỗ trợ chọn cá và chăm sóc." },
     { title: "Đóng gói chuyên nghiệp",  desc: "Hệ thống đóng gói đặc biệt đảm bảo cá an toàn khi giao hàng." },

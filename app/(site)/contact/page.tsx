@@ -96,14 +96,14 @@ export default function ContactPage() {
                             rel={method.external ? "noopener noreferrer" : undefined}
                             className="text-brand-600 font-semibold hover:text-brand-700 transition-colors text-base"
                           >
-                            {method.value}
+                            Địa chỉ cũ: {method.value}
                           </a>
                         ) : (
                           <p className="text-surface-800 font-semibold text-base">{method.value}</p>
                         )}
                         {"newValue" in method && method.newValue && (
                           <p className="text-brand-600 font-semibold hover:text-brand-700 transition-colors text-base">
-                            {method.newValue}
+                            Địa chỉ mới: {method.newValue}
                           </p>
                         )}
                         {method.note && (

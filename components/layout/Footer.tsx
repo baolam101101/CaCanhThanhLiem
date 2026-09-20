@@ -33,9 +33,6 @@ export function Footer() {
                 <p className="font-display text-xl font-semibold text-surface-900 leading-tight">
                   Cá Cảnh Thanh Liêm
                 </p>
-                <p className="text-xs font-semibold tracking-wider uppercase text-surface-700 mt-0.5">
-                  Koi Việt · Nhập Khẩu
-                </p>
               </div>
             </div>
             <p className="text-sm leading-relaxed text-surface-800 max-w-[260px]">
@@ -149,7 +146,7 @@ export function Footer() {
                 >
                   <MapPin size={15} className="text-surface-700 mt-0.5 shrink-0" aria-hidden />
                   <span className="text-sm text-surface-800 group-hover:text-surface-900 transition-colors leading-relaxed">
-                    {SITE_CONFIG.address}
+                    Địa chỉ cũ: {SITE_CONFIG.address}
                   </span>
                 </a>
               </li>
@@ -160,7 +157,7 @@ export function Footer() {
                 >
                   <MapPin size={15} className="text-surface-700 mt-0.5 shrink-0" aria-hidden />
                   <span className="text-sm text-surface-800 group-hover:text-surface-900 transition-colors leading-relaxed">
-                    {SITE_CONFIG.newAddress}
+                    Địa chỉ mới: {SITE_CONFIG.newAddress}
                   </span>
                 </a>
               </li>
