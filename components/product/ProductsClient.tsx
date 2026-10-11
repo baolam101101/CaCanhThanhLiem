@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { ProductCard } from "./ProductCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import type { Product, Category } from "@/types";
-import { useRouter } from "next/navigation";
 
 interface ProductsClientProps {
   initialProducts: Product[];
@@ -23,7 +22,6 @@ const STATUS_FILTERS = [
 type StatusFilter = (typeof STATUS_FILTERS)[number]["key"];
 
 export function ProductsClient({ initialProducts, categories }: ProductsClientProps) {
-  const router = useRouter();
   const [search, setSearch]               = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");

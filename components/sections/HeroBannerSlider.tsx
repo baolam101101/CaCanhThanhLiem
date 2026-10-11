@@ -10,6 +10,12 @@ export interface SlideData {
   objectPositionX?: number;
   objectPositionY?: number;
   zoom?: number;
+  /** "cover" (default) crops to fill. "contain" shows the whole artwork —
+   *  use it for signage/posters that must stay readable end to end. */
+  fit?: "cover" | "contain";
+  /** Backdrop behind a "contain" slide; match the artwork's own background
+   *  so the letterboxing is invisible. */
+  background?: string;
 }
 
 const AUTOPLAY_MS = 4500;
@@ -89,7 +95,7 @@ export function HeroBannerSlider({ slides }: Props) {
   const onTouchEnd = useCallback(() => {
     if (!dragging.current) { setPaused(false); return; }
     const d = drag; dragging.current = false; setDrag(0);
-    if (Math.abs(d) >= SWIPE_MIN) { d < 0 ? goNext() : goPrev(); }
+    if (Math.abs(d) >= SWIPE_MIN) { if (d < 0) goNext(); else goPrev(); }
     setTimeout(() => setPaused(false), 700);
   }, [drag, goNext, goPrev]);
 
@@ -128,10 +134,13 @@ export function HeroBannerSlider({ slides }: Props) {
       aria-roledescription="carousel">
       {SLIDES.map((s, i) => (
         <div key={s.id} className="absolute inset-0" style={slideStyle(i)} aria-hidden={i !== cur}>
-          <div className="absolute inset-0 overflow-hidden bg-surface-200">
+          <div className="absolute inset-0 overflow-hidden"
+            style={{ backgroundColor: s.background ?? "#e7e5e4" }}>
             {s.imageDataUrl && (
               <img src={s.imageDataUrl} alt="" draggable={false}
-                style={computeCroppedImageStyle(s.objectPositionX ?? 50, s.objectPositionY ?? 50, s.zoom ?? 1)} />
+                style={computeCroppedImageStyle(
+                  s.objectPositionX ?? 50, s.objectPositionY ?? 50, s.zoom ?? 1, s.fit ?? "cover",
+                )} />
             )}
           </div>
         </div>

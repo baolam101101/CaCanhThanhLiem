@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   X, ZoomIn, ZoomOut, Play, Pause, Maximize, Trash2, Upload,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface PreviewMedia {
   type: "image" | "video";

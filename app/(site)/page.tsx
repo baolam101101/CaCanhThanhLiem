@@ -5,14 +5,16 @@ import { SectionHeader } from "@/components/shared/SectionHeader";
 import { HeroBannerSlider } from "@/components/sections/HeroBannerSlider";
 import type { SlideData } from "@/components/sections/HeroBannerSlider";
 
-// Mock banner slides — realistic Unsplash images to demonstrate the
-// banner system before Supabase is connected (Issue #14).
-// Landscape + portrait included to exercise the crop engine.
+// Mock banner slides — the farm's own signboard leads, then stock images
+// standing in until Supabase is connected (Issue #14).
 const MOCK_SLIDES: SlideData[] = [
   {
     id: "slide1",
-    imageDataUrl: "https://images.unsplash.com/photo-1520301255226-bf5f144451c1?w=1600&h=900&fit=crop",
-    objectPositionX: 50, objectPositionY: 40, zoom: 1.1,
+    imageDataUrl: "/images/banner-sign.jpg",
+    objectPositionX: 50, objectPositionY: 50, zoom: 1,
+    // The signboard has to stay readable end to end, so show it whole on
+    // its own green (#A8CF36, sampled from the artwork) instead of cropping.
+    fit: "contain", background: "#A8CF36",
   },
   {
     id: "slide2",
@@ -30,7 +32,6 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { CategoryGrid } from "@/components/sections/CategoryGrid";
 import { MOCK_CATEGORIES, getFeaturedProducts } from "@/lib/data";
 import { SITE_CONFIG } from "@/lib/constants";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Trang chủ",
@@ -51,7 +52,7 @@ function HeroSection() {
             <em className="italic" style={{ color: "#739620" }}>CÁ CẢNH THANH LIÊM</em>
           </h2>
           <p className="text-sm md:text-base text-surface-500 leading-relaxed max-w-xl mx-auto">
-            Trang trại nuôi dưỡng & tuyển chọn kỹ lưỡng những "tác phẩm nghệ thuật sống" chất lượng, 
+            Trang trại nuôi dưỡng & tuyển chọn kỹ lưỡng những “tác phẩm nghệ thuật sống” chất lượng, 
             khỏe mạnh để mang đến cho Quý Khách những người bạn đồng hành tuyệt vời.
           </p>
         </div>
@@ -132,30 +133,7 @@ function FeaturedSection() {
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5" role="list">
           {featured.map((product) => (
             <li key={product.id}>
-              <Link href={`/products/${product.slug}`}
-                className={cn(
-                  "group block bg-white rounded-2xl border border-surface-200 overflow-hidden shadow-card",
-                  "transition-all duration-300 hover:-translate-y-1.5 hover:shadow-float hover:border-brand-300",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
-                )}>
-                <div className="relative aspect-[4/3] flex items-center justify-center overflow-hidden"
-                  style={{ background: "linear-gradient(135deg,#f6fbea,#ebf5d0)" }}>
-                  <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                    {product.tags.includes("new")      && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white" style={{ backgroundColor: "#739620" }}>Mới về</span>}
-                    {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-[11px] font-bold text-white bg-orange-500">⭐ Nổi bật</span>}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <p className="text-[10px] font-bold tracking-widest uppercase mb-1.5" style={{ color: "#8fb82a" }}>{product.category}</p>
-                  <h3 className="font-display text-lg md:text-xl font-light text-surface-800 mb-3 leading-snug group-hover:text-brand-700 transition-colors line-clamp-2">{product.name}</h3>
-                  <div className="flex items-center justify-between pt-3 border-t border-surface-100">
-                    <span className="text-xs text-surface-400">Liên hệ để biết giá</span>
-                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: "#739620" }}>
-                      Chi tiết <ArrowRight size={11} aria-hidden />
-                    </span>
-                  </div>
-                </div>
-              </Link>
+              <ProductCard product={product} />
             </li>
           ))}
         </ul>

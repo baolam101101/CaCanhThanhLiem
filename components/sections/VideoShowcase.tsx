@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Upload, X, Volume2, VolumeX } from "lucide-react";
+import { Play, Film, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* In production these come from Supabase/admin panel.
@@ -40,7 +40,11 @@ function VideoCard({ title, duration, index }: VideoCardProps) {
       role="button"
       tabIndex={0}
       aria-label={playing ? `Dừng video ${title}` : `Xem video ${title}`}
-      onKeyDown={(e) => e.key === "Enter" && setPlaying((v) => !v)}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        setPlaying((v) => !v);
+      }}
     >
       {/* Thumbnail area */}
       <div className={cn("relative aspect-video bg-gradient-to-br flex items-center justify-center", grad)}>
@@ -48,16 +52,16 @@ function VideoCard({ title, duration, index }: VideoCardProps) {
         <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-white/10 translate-x-10 -translate-y-10" />
         <div className="absolute bottom-0 left-0 w-24 h-24 rounded-full bg-white/10 -translate-x-8 translate-y-8" />
 
-        {/* fish graphic */}
-        <span
+        {/* Placeholder graphic until a real thumbnail is uploaded */}
+        <Film
+          size={64}
           className={cn(
-            "text-[72px] select-none relative z-10",
+            "relative z-10 text-white/55",
             "transition-transform duration-400",
-            playing ? "scale-90 opacity-50" : "group-hover:scale-110"
+            playing ? "scale-90 opacity-40" : "group-hover:scale-110"
           )}
           aria-hidden
-        >
-        </span>
+        />
 
         {/* Play/pause overlay */}
         <div className={cn(

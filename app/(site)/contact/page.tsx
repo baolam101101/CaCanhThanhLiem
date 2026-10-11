@@ -6,16 +6,15 @@ import { MapPin, Phone, Mail, Clock } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Liên hệ",
-  description: `Liên hệ với Cá Cảnh Thanh Liêm. Hotline: ${SITE_CONFIG.phone}. Địa chỉ: ${SITE_CONFIG.address}.`,
+  description: `Liên hệ với Cá Cảnh Thanh Liêm. Hotline: ${SITE_CONFIG.phone}. Địa chỉ: ${SITE_CONFIG.newAddress}.`,
 };
 
 const CONTACT_METHODS = [
   {
     icon: <MapPin size={20} />,
     title: "Cửa hàng",
-    value: SITE_CONFIG.address,
-    newValue: SITE_CONFIG.newAddress,
-    href: `https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.address)}`,
+    value: SITE_CONFIG.newAddress,
+    oldValue: SITE_CONFIG.address,
     note: "Mở cửa 7:30 - 17:30, tất cả các ngày",
     external: true,
   },
@@ -96,14 +95,14 @@ export default function ContactPage() {
                             rel={method.external ? "noopener noreferrer" : undefined}
                             className="text-brand-600 font-semibold hover:text-brand-700 transition-colors text-base"
                           >
-                            Địa chỉ cũ: {method.value}
+                            {method.value}
                           </a>
                         ) : (
-                          <p className="text-surface-800 font-semibold text-base">{method.value}</p>
+                          <p className="text-surface-800 font-semibold text-base">Địa chỉ mới: {method.value}</p>
                         )}
-                        {"newValue" in method && method.newValue && (
-                          <p className="text-brand-600 font-semibold hover:text-brand-700 transition-colors text-base">
-                            Địa chỉ mới: {method.newValue}
+                        {"oldValue" in method && method.oldValue && (
+                          <p className="text-surface-800 font-semibold text-base mt-1">
+                            Địa chỉ cũ: {method.oldValue}
                           </p>
                         )}
                         {method.note && (
@@ -115,19 +114,27 @@ export default function ContactPage() {
                 ))}
               </ul>
 
-              {/* Map placeholder */}
-              <div className="mt-8 rounded-2xl overflow-hidden border border-surface-200 aspect-[16/9] bg-gradient-to-br from-brand-50 to-surface-100 flex items-center justify-center">
-                <div className="text-center">
-                  <p className="text-sm text-surface-500 font-medium">Bản đồ Google Maps</p>
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.address)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-brand-600 hover:underline mt-1 block"
-                  >
-                    Mở trong Google Maps →
-                  </a>
+              {/* Map — embedded view of the current address, with a link out
+                  for anyone whose browser blocks the frame. */}
+              <div className="mt-8">
+                <div className="rounded-2xl overflow-hidden border border-surface-200 aspect-[16/9] bg-surface-100">
+                  <iframe
+                    title={`Bản đồ đường đi tới ${SITE_CONFIG.name}`}
+                    src={`https://www.google.com/maps?q=${encodeURIComponent(SITE_CONFIG.address)}&output=embed`}
+                    className="w-full h-full border-0"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
                 </div>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(SITE_CONFIG.address)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-brand-600 hover:underline mt-2 inline-block"
+                >
+                  Mở trong Google Maps →
+                </a>
               </div>
             </div>
 

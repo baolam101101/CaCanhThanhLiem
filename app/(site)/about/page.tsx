@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Award, Users, Leaf, BookOpen } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { SITE_CONFIG } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Về chúng tôi",
@@ -35,8 +34,6 @@ const VALUES = [
 ];
 
 export default function AboutPage() {
-  const yearsExp = new Date().getFullYear() - SITE_CONFIG.founded;
-
   return (
     <>
       {/* ---- Hero ---- */}
@@ -77,7 +74,9 @@ export default function AboutPage() {
                   {v.icon}
                 </div>
                 <h3 className="font-semibold text-brand-700 mb-3">{v.title}</h3>
-                <p className="text-sm text-surface-600 leading-relaxed">{v.desc}</p>
+                {v.desc && (
+                  <p className="text-sm text-surface-600 leading-relaxed">{v.desc}</p>
+                )}
               </li>
             ))}
           </ul>

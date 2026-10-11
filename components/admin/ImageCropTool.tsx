@@ -118,11 +118,16 @@ export function ImageCropTool({ src, posX, posY, zoom, aspectRatio, onPosX, onPo
 // Shared export — used by both the admin crop preview AND the live
 // frontend render (HeroBannerSlider, NewsDetailClient). One source of
 // truth guarantees admin preview == homepage output.
-export function computeCroppedImageStyle(posX: number, posY: number, zoom: number): React.CSSProperties {
+export function computeCroppedImageStyle(
+  posX: number,
+  posY: number,
+  zoom: number,
+  fit: "cover" | "contain" = "cover",
+): React.CSSProperties {
   const z = Math.max(1, zoom);
   return {
     position: "absolute", inset: 0, width: "100%", height: "100%",
-    objectFit: "cover", objectPosition: `${posX}% ${posY}%`,
+    objectFit: fit, objectPosition: `${posX}% ${posY}%`,
     transform: z !== 1 ? `scale(${z})` : undefined,
     transformOrigin: `${posX}% ${posY}%`,
   };
