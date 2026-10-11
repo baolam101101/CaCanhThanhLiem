@@ -9,12 +9,12 @@ import { PageHeader } from "@/components/shared/PageHeader";
 interface Props { params: Promise<{ slug: string }>; }
 
 export async function generateStaticParams() {
-  return getPublishedNews().map((n) => ({ slug: n.slug }));
+  return (await getPublishedNews()).map((n) => ({ slug: n.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const article = getNewsBySlug(slug);
+  const article = await getNewsBySlug(slug);
   if (!article) return { title: "Không tìm thấy" };
   return {
     title: article.title,
@@ -24,10 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function NewsDetailPage({ params }: Props) {
   const { slug } = await params;
-  const article = getNewsBySlug(slug);
+  const article = await getNewsBySlug(slug);
   if (!article) notFound();
 
-  const related = getRelatedNews(article, 4);
+  const related = await getRelatedNews(article, 4);
 
   return (
     <>

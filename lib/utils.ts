@@ -44,7 +44,7 @@ export function slugify(text: string): string {
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .trim();
+    .replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -100,3 +100,12 @@ export function staggerDelay(
 
 // Prevent unused import warning — staggerDelay uses React types
 import type React from "react";
+
+/**
+ * The image to use as a product's thumbnail: the primary item if it is
+ * an image, otherwise the first image. Videos are never thumbnails.
+ */
+export function getPrimaryImageUrl(product: { media?: { type: "image" | "video"; url: string; isPrimary: boolean }[] }): string | undefined {
+  const images = (product.media ?? []).filter((m) => m.type === "image");
+  return (images.find((m) => m.isPrimary) ?? images[0])?.url;
+}

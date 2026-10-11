@@ -15,6 +15,8 @@
 const PLACEHOLDER_MARKERS = [
   "your_supabase",
   "your-supabase",
+  "your-project-ref",   // .env.example URL
+  "your_anon_key",      // .env.example key
   "placeholder",
   "example",
   "localhost:54321", // local dev placeholder

@@ -2,24 +2,30 @@
 
 import React, { useState, useMemo, useRef } from "react";
 import { Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload, Video, ImageIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getPrimaryImageUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
-import type { Product, ProductStatus, CategorySlug } from "@/types";
-import { MOCK_CATEGORIES } from "@/lib/data";
+import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
+import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { checkFileForBucket } from "@/lib/admin/media";
+import type { Category, Product, ProductStatus } from "@/types";
 
+// A photo/video in the form. New files stay local (blob: preview) until
+// the product is saved, so cancelling the form leaves nothing in Storage.
 interface MediaItem {
-  id: string;
+  key: string;          // local React key
+  id?: string;          // product_media row id, once saved
   type: "image" | "video";
-  dataUrl: string;
+  url: string;          // public URL, or a blob: preview before upload
   name: string;
+  file?: File;          // present until uploaded
 }
 
 interface ProductFormData {
   name: string;
-  category: string;
+  categorySlug: string;
   description: string;
   status: ProductStatus;
   isFeatured: boolean;
@@ -28,6 +34,9 @@ interface ProductFormData {
 }
 
 type ModalMode = "add" | "edit" | null;
+
+const bucketFor = (type: "image" | "video") => (type === "image" ? "product-images" : "product-videos");
+const newKey = () => "m_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
 
 // ── Placeholder thumbnail for products with no image ──
 function ProductThumbnail({ imageUrl, name }: { imageUrl?: string; name: string }) {
@@ -55,57 +64,42 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
   const imgRef  = useRef<HTMLInputElement>(null);
   const vidRef  = useRef<HTMLInputElement>(null);
   const replaceRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
 
-  const readFile = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      if (file.size > 50 * 1024 * 1024) { reject(new Error(file.name + " vượt 50MB")); return; }
-      const r = new FileReader();
-      r.onload  = () => resolve(r.result as string);
-      r.onerror = () => reject(new Error("Không đọc được file"));
-      r.readAsDataURL(file);
-    });
+  // Validate locally (same limits as the Storage buckets) and preview via blob: URL.
+  const toItem = (file: File): MediaItem | null => {
+    const type: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+    const problem = checkFileForBucket(bucketFor(type), file);
+    if (problem) { alert(problem); return null; }
+    return { key: newKey(), type, url: URL.createObjectURL(file), name: file.name, file };
+  };
 
-  const addFiles = async (files: FileList | null, type: "image" | "video") => {
+  const addFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    setLoading(true);
-    const items: MediaItem[] = [];
-    for (const file of Array.from(files)) {
-      try {
-        const dataUrl = await readFile(file);
-        items.push({ id: "m_" + Date.now() + "_" + Math.random().toString(36).slice(2,6), type, dataUrl, name: file.name });
-      } catch (err) { alert((err as Error).message); }
-    }
+    const items = Array.from(files).map(toItem).filter((m): m is MediaItem => m !== null);
     onChange([...media, ...items]);
-    setLoading(false);
   };
 
-  const handleDrop = async (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault(); setDragOver(false);
-    const files = e.dataTransfer.files;
-    if (!files.length) return;
-    const type = files[0].type.startsWith("video/") ? "video" : "image";
-    await addFiles(files, type);
+    addFiles(e.dataTransfer.files);
   };
 
-  const remove = (id: string) => onChange(media.filter((m) => m.id !== id));
+  const remove = (key: string) => onChange(media.filter((m) => m.key !== key));
 
-  const replaceMedia = async (file: File) => {
+  const replaceMedia = (file: File) => {
     if (!replaceTargetId) return;
-    const target = media.find((m) => m.id === replaceTargetId);
-    if (!target) return;
-    try {
-      const dataUrl = await readFile(file);
-      const type: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
-      onChange(media.map((m) => m.id === replaceTargetId ? { ...m, dataUrl, name: file.name, type } : m));
-    } catch (err) { alert((err as Error).message); }
+    const item = toItem(file);
+    if (item) onChange(media.map((m) => (m.key === replaceTargetId ? item : m)));
     setReplaceTargetId(null);
   };
+
+  // The thumbnail is the first image (videos are never thumbnails).
+  const coverIdx = media.findIndex((m) => m.type === "image");
 
   const onDrop = (targetIdx: number) => {
     if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setOverIdx(null); return; }
@@ -122,13 +116,13 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <p className="text-sm font-medium text-surface-700">Hình ảnh & Video</p>
-          <p className="text-xs text-surface-400 mt-0.5">Ảnh đầu tiên là ảnh đại diện · Kéo thả để sắp xếp</p>
+          <p className="text-xs text-surface-400 mt-0.5">Ảnh đầu tiên là ảnh bìa · Kéo thả để sắp xếp</p>
         </div>
         <div className="flex gap-2">
           <input ref={imgRef} type="file" accept="image/*" multiple className="hidden"
-            onChange={(e) => addFiles(e.target.files, "image")} />
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           <input ref={vidRef} type="file" accept="video/*" multiple className="hidden"
-            onChange={(e) => addFiles(e.target.files, "video")} />
+            onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           <input ref={replaceRef} type="file" accept="image/*,video/*" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceMedia(f); e.target.value = ""; }} />
           <button type="button" onClick={() => imgRef.current?.click()}
@@ -141,8 +135,6 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
           </button>
         </div>
       </div>
-
-      {loading && <p className="text-xs text-brand-600 animate-pulse">Đang xử lý file...</p>}
 
       {media.length === 0 ? (
         /* Drop zone */
@@ -157,13 +149,13 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
           )}>
           <Upload size={24} className="mx-auto mb-2 text-surface-300" aria-hidden />
           <p className="text-sm font-medium text-surface-600">Kéo thả hoặc nhấn để thêm ảnh / video</p>
-          <p className="text-xs text-surface-400 mt-1">JPG, PNG, WebP, MP4 — Tối đa 50MB mỗi file</p>
+          <p className="text-xs text-surface-400 mt-1">Ảnh JPG, PNG, WebP tối đa 5 MB · Video MP4, MOV tối đa 50 MB</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {media.map((item, i) => (
             <div
-              key={item.id}
+              key={item.key}
               draggable
               onDragStart={() => setDragIdx(i)}
               onDragOver={(e) => { e.preventDefault(); setOverIdx(i); }}
@@ -174,19 +166,19 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
                 "relative rounded-xl overflow-hidden border-2 group cursor-pointer transition-all",
                 overIdx === i ? "border-brand-400 scale-[1.02]" : "border-surface-200",
                 dragIdx === i && "opacity-40",
-                i === 0 && "ring-2 ring-brand-300 ring-offset-1"
+                i === coverIdx && "ring-2 ring-brand-300 ring-offset-1"
               )}>
               <div className="aspect-square">
                 {item.type === "image"
-                  ? <img src={item.dataUrl} alt={item.name} className="w-full h-full object-cover" />
-                  : <video src={item.dataUrl} className="w-full h-full object-cover" muted playsInline />
+                  ? <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                  : <video src={item.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                 }
               </div>
               {/* Hover overlay — click opens preview, X removes directly */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); remove(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); remove(item.key); }}
                   className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center transition-all hover:bg-red-700 absolute top-1 right-1"
                   aria-label="Xóa">
                   <Trash2 size={12} aria-hidden />
@@ -194,7 +186,7 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
               </div>
               {/* Badge */}
               <div className="absolute top-1 left-1 flex gap-1">
-                {i === 0 && (
+                {i === coverIdx && (
                   <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-brand-500 text-white">Bìa</span>
                 )}
                 {item.type === "video" && (
@@ -214,15 +206,15 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
 
       {previewIdx !== null && media[previewIdx] && (
         <MediaPreviewModal
-          media={{ type: media[previewIdx].type, src: media[previewIdx].dataUrl, name: media[previewIdx].name }}
+          media={{ type: media[previewIdx].type, src: media[previewIdx].url, name: media[previewIdx].name }}
           onClose={() => setPreviewIdx(null)}
           onReplace={() => {
-            setReplaceTargetId(media[previewIdx].id);
+            setReplaceTargetId(media[previewIdx].key);
             setPreviewIdx(null);
             replaceRef.current?.click();
           }}
           onDelete={() => {
-            remove(media[previewIdx].id);
+            remove(media[previewIdx].key);
             setPreviewIdx(null);
           }}
         />
@@ -232,23 +224,42 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
 }
 
 // ── Product Modal ──
-function ProductModal({ mode, product, onSave, onClose }: {
+function ProductModal({ mode, product, categories, onSave, onClose }: {
   mode: "add" | "edit";
   product: Product | null;
-  onSave: (d: ProductFormData) => void;
+  categories: Category[];
+  onSave: (d: ProductFormData, progress: (text: string) => void) => Promise<void>;
   onClose: () => void;
 }) {
   const [form, setForm] = useState<ProductFormData>({
-    name:        product?.name        ?? "",
-    category:    product?.category    ?? MOCK_CATEGORIES[0].name,
-    description: product?.description ?? "",
-    status:      product?.status      ?? "available",
-    isFeatured:  product?.tags.includes("featured") ?? false,
-    isNew:       product?.tags.includes("new")       ?? false,
-    media:       [],
+    name:         product?.name         ?? "",
+    categorySlug: product?.categorySlug ?? categories[0]?.slug ?? "",
+    description:  product?.description  ?? "",
+    status:       product?.status       ?? "available",
+    isFeatured:   product?.tags.includes("featured") ?? false,
+    isNew:        product?.tags.includes("new")       ?? false,
+    // Existing photos/videos are loaded so they can be reordered or removed.
+    media: (product?.media ?? []).map((m) => ({
+      key: m.id, id: m.id, type: m.type, url: m.url, name: m.alt || (m.type === "video" ? "Video" : "Ảnh"),
+    })),
   });
+  const [saving, setSaving]     = useState(false);
+  const [progress, setProgress] = useState("");
+  const [error, setError]       = useState("");
 
   const set = (patch: Partial<ProductFormData>) => setForm((f) => ({ ...f, ...patch }));
+
+  const submit = async () => {
+    if (!form.name.trim()) { setError("Vui lòng nhập tên sản phẩm"); return; }
+    if (!form.categorySlug) { setError("Vui lòng chọn danh mục"); return; }
+    setSaving(true); setError(""); setProgress("");
+    try {
+      await onSave(form, setProgress);
+    } catch (e) {
+      setError((e as Error).message);
+      setSaving(false); setProgress("");
+    }
+  };
 
   return (
     <div
@@ -267,6 +278,8 @@ function ProductModal({ mode, product, onSave, onClose }: {
         </div>
 
         <div className="p-5 flex flex-col gap-5">
+          {error && <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
+
           {/* Media */}
           <MediaUploader media={form.media} onChange={(m) => set({ media: m })} />
 
@@ -289,9 +302,11 @@ function ProductModal({ mode, product, onSave, onClose }: {
           {/* Category */}
           <div>
             <label className="text-sm font-medium text-surface-700 block mb-1.5">Danh mục</label>
-            <select value={form.category} onChange={(e) => set({ category: e.target.value })}
+            <select value={form.categorySlug} onChange={(e) => set({ categorySlug: e.target.value })}
               className="h-11 w-full rounded-xl border border-surface-200 bg-white px-4 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100 transition-all">
-              {MOCK_CATEGORIES.map((c) => <option key={c.slug} value={c.name}>{c.name}</option>)}
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}{c.visible === false ? " (đang ẩn)" : ""}</option>
+              ))}
             </select>
           </div>
 
@@ -375,18 +390,13 @@ function ProductModal({ mode, product, onSave, onClose }: {
             </div>
           </div>
 
+          {progress && <p className="text-xs text-brand-600 animate-pulse" aria-live="polite">{progress}</p>}
+
           <div className="flex gap-3 pt-1">
-            <Button
-              variant="primary"
-              className="flex-1"
-              onClick={() => {
-                if (!form.name.trim()) { alert("Vui lòng nhập tên sản phẩm"); return; }
-                onSave(form);
-              }}
-            >
+            <Button variant="primary" className="flex-1" onClick={submit} loading={saving} disabled={saving}>
               {mode === "add" ? "Thêm sản phẩm" : "Lưu thay đổi"}
             </Button>
-            <Button variant="outline" onClick={onClose}>Hủy</Button>
+            <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
           </div>
         </div>
       </div>
@@ -395,7 +405,11 @@ function ProductModal({ mode, product, onSave, onClose }: {
 }
 
 // ── Main ──
-export function AdminProductsClient({ initialProducts }: { initialProducts: Product[] }) {
+export function AdminProductsClient({ initialProducts, categories, configured }: {
+  initialProducts: Product[];
+  categories: Category[];
+  configured: boolean;
+}) {
   const [products,  setProducts]  = useState<Product[]>(initialProducts);
   const [search,    setSearch]    = useState("");
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -412,46 +426,65 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
     );
   }, [products, search]);
 
-  const toggleStatus = (id: string) => {
-    setProducts((prev) => prev.map((p) => {
-      if (p.id !== id) return p;
-      const next: ProductStatus = p.status === "available" ? "hidden" : "available";
+  const reload = async () => {
+    const { products: fresh } = await adminApi<{ products: Product[] }>("/api/admin/products");
+    setProducts(fresh);
+  };
+
+  const toggleStatus = async (p: Product) => {
+    const next: ProductStatus = p.status === "hidden" ? "available" : "hidden";
+    setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: next } : x)));
+    try {
+      await adminApi(`/api/admin/products/${p.id}`, { method: "PATCH", body: { status: next } });
       msg((next === "available" ? "Đã hiện" : "Đã ẩn") + ` "${p.name}"`);
-      return { ...p, status: next, updatedAt: new Date() };
-    }));
+    } catch (e) {
+      setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: p.status } : x)));
+      msg((e as Error).message);
+    }
   };
 
-  const deleteProduct = (id: string) => {
-    const p = products.find((x) => x.id === id);
-    if (!p || !confirm(`Xóa "${p.name}"?`)) return;
-    setProducts((prev) => prev.filter((x) => x.id !== id));
-    msg(`Đã xóa "${p.name}"`);
+  const deleteProduct = async (p: Product) => {
+    if (!confirm(`Xóa "${p.name}"? Ảnh và video của sản phẩm cũng sẽ bị xóa.`)) return;
+    try {
+      await adminApi(`/api/admin/products/${p.id}`, { method: "DELETE" });
+      setProducts((prev) => prev.filter((x) => x.id !== p.id));
+      msg(`Đã xóa "${p.name}"`);
+    } catch (e) { msg((e as Error).message); }
   };
 
-  const handleSave = (data: ProductFormData) => {
+  // Upload new files first (straight to Storage), then save the product.
+  const handleSave = async (data: ProductFormData, progress: (text: string) => void) => {
+    const pending = data.media.filter((m) => m.file);
+    const media: { id?: string; type: "image" | "video"; url: string; storagePath?: string }[] = [];
+    let done = 0;
+    for (const m of data.media) {
+      if (m.file) {
+        progress(`Đang tải lên ${++done}/${pending.length}: ${m.name}`);
+        const up = await uploadMedia(bucketFor(m.type), m.file);
+        media.push({ type: m.type, url: up.url, storagePath: up.path });
+      } else {
+        media.push({ id: m.id, type: m.type, url: m.url });
+      }
+    }
+    progress("Đang lưu sản phẩm…");
+
     const tags: ("featured" | "new")[] = [];
     if (data.isFeatured) tags.push("featured");
     if (data.isNew)      tags.push("new");
+    const body = {
+      name: data.name, categorySlug: data.categorySlug, description: data.description,
+      status: data.status, tags, media,
+    };
 
     if (modalMode === "add") {
-      const slug = data.name.toLowerCase().replace(/\s+/g, "-").replace(/[^\w-]/g, "");
-      const newP: Product = {
-        id: String(Date.now()), slug, name: data.name, latin: "",
-        category: data.category,
-        categorySlug: (MOCK_CATEGORIES.find((c) => c.name === data.category)?.slug ?? "ca-koi") as CategorySlug,
-        status: data.status, tags, description: data.description,
-        specs: { size:"", temperature:"", ph:"", origin:"", minTankSize:"", careLevel:"Dễ chăm sóc" },
-        createdAt: new Date(), updatedAt: new Date(),
-      };
-      setProducts((p) => [newP, ...p]);
+      await adminApi("/api/admin/products", { method: "POST", body });
       msg(`Đã thêm "${data.name}"`);
     } else if (editing) {
-      setProducts((p) => p.map((x) => x.id === editing.id
-        ? { ...x, name: data.name, category: data.category, description: data.description, status: data.status, tags, updatedAt: new Date() }
-        : x
-      ));
+      await adminApi(`/api/admin/products/${editing.id}`, { method: "PATCH", body });
       msg(`Đã cập nhật "${data.name}"`);
     }
+    data.media.forEach((m) => m.file && URL.revokeObjectURL(m.url));
+    await reload();
     setModalMode(null); setEditing(null);
   };
 
@@ -466,10 +499,18 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
           <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quản lý sản phẩm</h1>
           <p className="text-sm text-surface-500 mt-1">{products.length} sản phẩm</p>
         </div>
-        <Button variant="primary" onClick={() => { setEditing(null); setModalMode("add"); }}>
+        <Button variant="primary" disabled={!configured || categories.length === 0}
+          onClick={() => { setEditing(null); setModalMode("add"); }}>
           <Plus size={15} aria-hidden /> Thêm sản phẩm
         </Button>
       </div>
+
+      {!configured && <NotConfiguredNotice />}
+      {configured && categories.length === 0 && (
+        <p className="mb-5 p-4 rounded-xl border border-brand-200 bg-brand-50 text-sm text-brand-700">
+          Chưa có danh mục nào. Hãy tạo danh mục ở mục <strong>Danh mục</strong> trước, rồi quay lại thêm sản phẩm.
+        </p>
+      )}
 
       <div className="relative max-w-xs mb-5">
         <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" aria-hidden />
@@ -495,7 +536,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                     <div className="flex items-center gap-3">
                       {/* Image thumbnail */}
                       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-surface-200">
-                        <ProductThumbnail name={p.name} />
+                        <ProductThumbnail name={p.name} imageUrl={getPrimaryImageUrl(p)} />
                       </div>
                       <p className="text-sm font-medium text-surface-800 truncate max-w-[160px]">{p.name}</p>
                     </div>
@@ -515,12 +556,12 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                         className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa">
                         <Edit2 size={14} aria-hidden />
                       </button>
-                      <button onClick={() => toggleStatus(p.id)}
+                      <button onClick={() => toggleStatus(p)}
                         className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
                         title={p.status === "hidden" ? "Hiện" : "Ẩn"}>
                         {p.status === "hidden" ? <Eye size={14} aria-hidden /> : <EyeOff size={14} aria-hidden />}
                       </button>
-                      <button onClick={() => deleteProduct(p.id)}
+                      <button onClick={() => deleteProduct(p)}
                         className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa">
                         <Trash2 size={14} aria-hidden />
                       </button>
@@ -529,7 +570,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-surface-400">Không tìm thấy sản phẩm</td></tr>
+                <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-surface-400">{products.length === 0 ? "Chưa có sản phẩm nào" : "Không tìm thấy sản phẩm"}</td></tr>
               )}
             </tbody>
           </table>
@@ -537,7 +578,7 @@ export function AdminProductsClient({ initialProducts }: { initialProducts: Prod
       </div>
 
       {modalMode && (
-        <ProductModal mode={modalMode} product={editing} onSave={handleSave}
+        <ProductModal mode={modalMode} product={editing} categories={categories} onSave={handleSave}
           onClose={() => { setModalMode(null); setEditing(null); }} />
       )}
 

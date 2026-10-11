@@ -8,19 +8,24 @@
 -- ============================================================
 
 -- ── categories ───────────────────────────────────────────────
--- Source: interface Category { slug, name, nameEn, description, count, imageUrl? }
--- `slug` uses the closed category_slug enum and is the natural key the
--- products table references via foreign key. `count` from the entity is
--- a denormalised product tally kept as product_count.
+-- Source: admin panel (components/admin/AdminCategoriesClient.tsx) —
+--   slug, name, description, visible, order.
+-- `slug` is the natural key products reference. It is free text (not an
+-- enum) because categories are created from the admin panel; the check
+-- keeps it URL-safe (lowercase, digits, single hyphens).
+-- The product count shown on the site is computed from products at read
+-- time, so no denormalised counter is stored here.
 create table categories (
   id            uuid primary key default gen_random_uuid(),
-  slug          category_slug not null unique,
+  slug          text          not null unique
+                              check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
   name          text          not null,
-  name_en       text          not null,
+  name_en       text,
   description   text          not null default '',
-  product_count integer       not null default 0,
   image_url     text,
   storage_path  text,
+  visible       boolean       not null default true,
+  sort_order    integer       not null default 0,
   created_at    timestamptz   not null default now(),
   updated_at    timestamptz   not null default now()
 );
@@ -43,8 +48,11 @@ create table admin_users (
 
 -- ── banners ──────────────────────────────────────────────────
 -- Source: interface SlideData { id, imageDataUrl?, objectPositionX?,
---   objectPositionY?, zoom? } extended by BannerItem { visible, order, imageName? }.
+--   objectPositionY?, zoom?, fit?, background? } extended by
+--   BannerItem { visible, order, imageName? }.
 -- `order` is a reserved word in SQL, mapped to sort_order.
+-- `fit` = 'contain' shows the whole artwork (e.g. the shop signboard)
+-- instead of cropping it; `background` fills the letterbox around it.
 create table banners (
   id                uuid        primary key default gen_random_uuid(),
   image_url         text,
@@ -53,6 +61,9 @@ create table banners (
   object_position_x numeric,
   object_position_y numeric,
   zoom              numeric     not null default 1,
+  fit               text        not null default 'cover'
+                                check (fit in ('cover', 'contain')),
+  background        text,
   visible           boolean     not null default true,
   sort_order        integer     not null default 0,
   created_at        timestamptz not null default now(),

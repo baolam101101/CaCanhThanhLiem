@@ -16,8 +16,11 @@ create index products_active_created_idx
   on products (created_at desc)
   where deleted_at is null;
 
--- ── product_images ───────────────────────────────────────────
-create index product_images_product_id_idx on product_images (product_id, sort_order);
+-- ── product_media ────────────────────────────────────────────
+create index product_media_product_id_idx on product_media (product_id, sort_order);
+
+-- ── categories ───────────────────────────────────────────────
+create index categories_visible_order_idx on categories (visible, sort_order);
 
 -- ── news_articles ────────────────────────────────────────────
 create index news_published_idx

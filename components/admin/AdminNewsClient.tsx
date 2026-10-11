@@ -5,7 +5,9 @@ import {
   Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload,
   Heading2, Pilcrow, List as ListIcon, ImageIcon, GripVertical, AlertCircle,
 } from "lucide-react";
-import { cn, slugify } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -44,10 +46,11 @@ function emptyBlock(type: NewsContentBlock["type"]): NewsContentBlock {
 // (heading, paragraph, list, inline image) per the Phase 1 UI/mock
 // scope. Each block can be reordered and removed; images upload via
 // FileReader → base64 preview, same pattern as MediaUploader elsewhere
-// in Admin, ready to be swapped for real Supabase Storage uploads
-// in Phase 2 without changing this component's external shape.
+// in Admin. Inline images upload to the news-images bucket as soon as
+// they are picked; the server removes files no longer referenced.
 function ContentEditor({ blocks, onChange }: { blocks: NewsContentBlock[]; onChange: (b: NewsContentBlock[]) => void }) {
   const imgRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [uploading, setUploading] = useState<number | null>(null);
 
   const updateBlock = (i: number, block: NewsContentBlock) => {
     const next = [...blocks]; next[i] = block; onChange(next);
@@ -62,11 +65,16 @@ function ContentEditor({ blocks, onChange }: { blocks: NewsContentBlock[]; onCha
     onChange(next);
   };
 
-  const handleImageFile = (i: number, file: File) => {
-    if (!file.type.startsWith("image/")) { alert("Vui lòng chọn file ảnh"); return; }
-    const r = new FileReader();
-    r.onload = () => updateBlock(i, { type: "image", url: r.result as string, caption: (blocks[i] as { caption?: string }).caption ?? "" });
-    r.readAsDataURL(file);
+  const handleImageFile = async (i: number, file: File) => {
+    setUploading(i);
+    try {
+      const up = await uploadMedia("news-images", file);
+      updateBlock(i, { type: "image", url: up.url, caption: (blocks[i] as { caption?: string }).caption ?? "" });
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setUploading(null);
+    }
   };
 
   return (
@@ -154,7 +162,9 @@ function ContentEditor({ blocks, onChange }: { blocks: NewsContentBlock[]; onCha
               <div className="flex flex-col gap-2">
                 <input ref={(el) => { imgRefs.current[i] = el; }} type="file" accept="image/*" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(i, f); e.target.value = ""; }} />
-                {block.url ? (
+                {uploading === i ? (
+                  <p className="py-6 text-center text-sm text-brand-600 animate-pulse rounded-lg border-2 border-dashed border-brand-200">Đang tải ảnh lên…</p>
+                ) : block.url ? (
                   <div className="relative rounded-lg overflow-hidden aspect-video bg-surface-100">
                     <img src={block.url} alt="" className="w-full h-full object-cover" />
                     <button type="button" onClick={() => imgRefs.current[i]?.click()}
@@ -186,10 +196,13 @@ function NewsModal({
   mode: "add" | "edit";
   article: NewsArticle | null;
   existingTitles: { id: string; title: string }[];
-  onSave: (d: NewsFormData) => void;
+  onSave: (d: NewsFormData) => Promise<void>;
   onClose: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadingFeatured, setUploadingFeatured] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState<NewsFormData>({
     title:               article?.title               ?? "",
     excerpt:             article?.excerpt             ?? "",
@@ -205,14 +218,18 @@ function NewsModal({
 
   const upd = (p: Partial<NewsFormData>) => setForm((f) => ({ ...f, ...p }));
 
-  const handleFeaturedImage = (file: File) => {
-    if (!file.type.startsWith("image/")) { alert("Vui lòng chọn file ảnh"); return; }
-    if (file.size > 15 * 1024 * 1024) { alert("Ảnh tối đa 15MB"); return; }
-    const r = new FileReader();
-    // Reset crop position to center on every new upload so the user
-    // starts from a neutral position and can drag to any edge
-    r.onload = () => upd({ featuredImage: r.result as string, featuredImagePosX: 50, featuredImagePosY: 50, featuredImageZoom: 1 });
-    r.readAsDataURL(file);
+  const handleFeaturedImage = async (file: File) => {
+    setUploadingFeatured(true); setError("");
+    try {
+      const up = await uploadMedia("news-images", file);
+      // Reset crop position to center on every new upload so the user
+      // starts from a neutral position and can drag to any edge
+      upd({ featuredImage: up.url, featuredImagePosX: 50, featuredImagePosY: 50, featuredImageZoom: 1 });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploadingFeatured(false);
+    }
   };
 
   const checkDuplicateTitle = (title: string): boolean => {
@@ -226,12 +243,18 @@ function NewsModal({
     setTitleError(checkDuplicateTitle(value) ? "Tiêu đề này đã tồn tại — vui lòng chọn tiêu đề khác" : "");
   };
 
-  const save = () => {
-    if (!form.title.trim()) { alert("Vui lòng nhập tiêu đề"); return; }
+  const save = async () => {
+    if (!form.title.trim()) { setError("Vui lòng nhập tiêu đề"); return; }
     if (checkDuplicateTitle(form.title)) { setTitleError("Tiêu đề này đã tồn tại — vui lòng chọn tiêu đề khác"); return; }
-    if (!form.featuredImage) { alert("Vui lòng chọn ảnh đại diện"); return; }
-    if (!form.excerpt.trim()) { alert("Vui lòng nhập mô tả ngắn"); return; }
-    onSave(form);
+    if (!form.featuredImage) { setError("Vui lòng chọn ảnh đại diện"); return; }
+    if (!form.excerpt.trim()) { setError("Vui lòng nhập mô tả ngắn"); return; }
+    setSaving(true); setError("");
+    try {
+      await onSave(form);
+    } catch (e) {
+      setError((e as Error).message);
+      setSaving(false);
+    }
   };
 
   return (
@@ -246,6 +269,7 @@ function NewsModal({
         </div>
 
         <div className="p-5 flex flex-col gap-5">
+          {error && <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
           {/* Title */}
           <div>
             <label className="text-sm font-medium text-surface-700 block mb-1.5">
@@ -298,12 +322,14 @@ function NewsModal({
                   </button>
                 </div>
               </div>
+            ) : uploadingFeatured ? (
+              <p className="w-full py-8 text-center text-sm text-brand-600 animate-pulse rounded-xl border-2 border-dashed border-brand-200">Đang tải ảnh lên…</p>
             ) : (
               <button type="button" onClick={() => fileRef.current?.click()}
                 className="w-full flex flex-col items-center justify-center gap-2 py-8 rounded-xl border-2 border-dashed border-surface-200 hover:border-brand-400 hover:bg-brand-50 transition-all">
                 <Upload size={22} className="text-surface-400" aria-hidden />
                 <p className="text-sm font-medium text-surface-700">Nhấn để chọn ảnh đại diện</p>
-                <p className="text-xs text-surface-400">JPG, PNG, WebP — Tối đa 15MB</p>
+                <p className="text-xs text-surface-400">JPG, PNG, WebP — Tối đa 5 MB</p>
               </button>
             )}
           </div>
@@ -333,10 +359,10 @@ function NewsModal({
           </label>
 
           <div className="flex gap-3 pt-1">
-            <Button variant="primary" className="flex-1" onClick={save}>
+            <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={saving || uploadingFeatured}>
               {mode === "add" ? "Thêm tin tức" : "Lưu thay đổi"}
             </Button>
-            <Button variant="outline" onClick={onClose}>Hủy</Button>
+            <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
           </div>
         </div>
       </div>
@@ -352,7 +378,7 @@ function NewsModal({
   );
 }
 
-export function AdminNewsClient({ initialNews }: { initialNews: NewsArticle[] }) {
+export function AdminNewsClient({ initialNews, configured }: { initialNews: NewsArticle[]; configured: boolean }) {
   const [news,      setNews]      = useState<NewsArticle[]>(initialNews);
   const [search,    setSearch]    = useState("");
   const [modalMode, setModalMode] = useState<ModalMode>(null);
@@ -368,54 +394,45 @@ export function AdminNewsClient({ initialNews }: { initialNews: NewsArticle[] })
     return news.filter((n) => n.title.toLowerCase().includes(q));
   }, [news, search]);
 
-  const toggleVisible = (id: string) => {
-    setNews((prev) => prev.map((n) => {
-      if (n.id !== id) return n;
-      msg(`${!n.published ? "Đã hiện" : "Đã ẩn"} "${n.title}"`);
-      return { ...n, published: !n.published, updatedAt: new Date() };
-    }));
+  // Dates arrive as ISO strings from the API.
+  const reload = async () => {
+    const { news: fresh } = await adminApi<{ news: NewsArticle[] }>("/api/admin/news");
+    setNews(fresh.map((n) => ({ ...n, createdAt: new Date(n.createdAt), updatedAt: new Date(n.updatedAt) })));
   };
 
-  const deleteNews = (id: string) => {
+  const toggleVisible = async (id: string) => {
+    const n = news.find((x) => x.id === id);
+    if (!n) return;
+    const published = !n.published;
+    setNews((prev) => prev.map((x) => (x.id === id ? { ...x, published } : x)));
+    try {
+      await adminApi(`/api/admin/news/${id}`, { method: "PATCH", body: { published } });
+      msg(`${published ? "Đã hiện" : "Đã ẩn"} "${n.title}"`);
+    } catch (e) {
+      setNews((prev) => prev.map((x) => (x.id === id ? { ...x, published: !published } : x)));
+      msg((e as Error).message);
+    }
+  };
+
+  const deleteNews = async (id: string) => {
     const n = news.find((x) => x.id === id);
     if (!n || !confirm(`Xóa tin tức "${n.title}"?`)) return;
-    setNews((prev) => prev.filter((x) => x.id !== id));
-    msg(`Đã xóa "${n.title}"`);
+    try {
+      await adminApi(`/api/admin/news/${id}`, { method: "DELETE" });
+      setNews((prev) => prev.filter((x) => x.id !== id));
+      msg(`Đã xóa "${n.title}"`);
+    } catch (e) { msg((e as Error).message); }
   };
 
-  const handleSave = (data: NewsFormData) => {
+  const handleSave = async (data: NewsFormData) => {
     if (modalMode === "add") {
-      const newArticle: NewsArticle = {
-        id: String(Date.now()),
-        slug: slugify(data.title),
-        title: data.title,
-        excerpt: data.excerpt,
-        content: data.content,
-        featuredImage:     data.featuredImage,
-        featuredImagePosX: data.featuredImagePosX,
-        featuredImagePosY: data.featuredImagePosY,
-        featuredImageZoom: data.featuredImageZoom,
-        published: data.published,
-        displayOrder: news.length + 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setNews((p) => [newArticle, ...p]);
+      await adminApi("/api/admin/news", { method: "POST", body: data });
       msg(`Đã thêm "${data.title}"`);
     } else if (editing) {
-      setNews((p) => p.map((x) => x.id === editing.id
-        ? {
-            ...x, title: data.title, slug: slugify(data.title), excerpt: data.excerpt,
-            content: data.content, featuredImage: data.featuredImage,
-            featuredImagePosX: data.featuredImagePosX,
-            featuredImagePosY: data.featuredImagePosY,
-            featuredImageZoom: data.featuredImageZoom,
-            published: data.published, updatedAt: new Date(),
-          }
-        : x
-      ));
+      await adminApi(`/api/admin/news/${editing.id}`, { method: "PATCH", body: data });
       msg(`Đã cập nhật "${data.title}"`);
     }
+    await reload();
     setModalMode(null); setEditing(null);
   };
 
@@ -426,10 +443,12 @@ export function AdminNewsClient({ initialNews }: { initialNews: NewsArticle[] })
           <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quản lý Tin tức</h1>
           <p className="text-sm text-surface-500 mt-1">{news.length} bài viết</p>
         </div>
-        <Button variant="primary" onClick={() => { setEditing(null); setModalMode("add"); }}>
+        <Button variant="primary" disabled={!configured} onClick={() => { setEditing(null); setModalMode("add"); }}>
           <Plus size={15} aria-hidden /> Thêm tin tức
         </Button>
       </div>
+
+      {!configured && <NotConfiguredNotice />}
 
       <div className="relative max-w-xs mb-5">
         <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" aria-hidden />

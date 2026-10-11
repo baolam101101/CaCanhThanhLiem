@@ -1,20 +1,28 @@
-import type { Product, Category } from "@/types";
+import type { Product, Category, NewsArticle, ProductMedia, SiteVideo } from "@/types";
+import type { SlideData } from "@/components/sections/HeroBannerSlider";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseConfig, SUPABASE_ENABLED } from "@/lib/supabase/config";
+import { MOCK_PRODUCTS, MOCK_CATEGORIES, MOCK_NEWS } from "@/lib/mock-data";
+import { SITE_DATA_TAG } from "@/lib/cache-tags";
 
 // ============================================================
-// SUPABASE DATA SOURCE (Phase 2 — repository layer)
+// PUBLIC SITE DATA (server-side repository)
 // ------------------------------------------------------------
-// Public site reads use an isomorphic anon client created from the
-// pure config module (no next/headers), so this file stays importable
-// from both Server and Client Components. The RLS "public read"
-// policies gate what the anon role may see.
+// Reads go through a cookie-less anon client, so the RLS "public read"
+// policies decide what the site can see (no hidden products, no
+// unpublished news, no hidden banners/videos/categories).
 //
-// Every repository function falls back to the mock data in this file
-// when Supabase is not configured or a query fails, so behaviour is
-// identical to Phase 1 until the database is populated. Repository
-// functions are async because Supabase queries are promise-based.
+// Caching: every Supabase request is a fetch tagged SITE_DATA_TAG and
+// cached for REVALIDATE_SECONDS. Admin writes call revalidateSiteData()
+// (lib/admin/revalidate.ts), so edits show up on the next page load.
+//
+// Mock data is used ONLY when Supabase is not configured. When it is
+// configured, a failed query returns an empty result instead — the live
+// site must never show made-up products.
 // ============================================================
+
+const REVALIDATE_SECONDS = 300;
+
 let _readClient: SupabaseClient | null = null;
 
 function getReadClient(): SupabaseClient | null {
@@ -22,471 +30,354 @@ function getReadClient(): SupabaseClient | null {
   if (!_readClient) {
     _readClient = createClient(supabaseConfig.url, supabaseConfig.anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: (input, init) =>
+          fetch(input, {
+            ...init,
+            next: { revalidate: REVALIDATE_SECONDS, tags: [SITE_DATA_TAG] },
+          }),
+      },
     });
   }
   return _readClient;
 }
 
-// ============================================================
-// MOCK PRODUCT DATA
-// ============================================================
-export const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    slug: "ca-hai-quy-nemo",
-    name: "Cá Hải Quỳ Nemo",
-    nameEn: "Clownfish",
-    latin: "Amphiprioninae",
-    category: "Cá Biển",
-    categorySlug: "ca-bien",
-    status: "available",
-    tags: ["featured", "new"],
-    description:
-      "Cá hải quỳ Nemo nổi tiếng với màu sắc rực rỡ cam-trắng. Sống cộng sinh với hải quỳ, tạo nên vẻ đẹp sinh động cho hồ rạn san hô.",
-    longDescription:
-      "Amphiprioninae là một loài cá biển nhiệt đới thuộc họ Pomacentridae. Nổi tiếng thế giới sau bộ phim Finding Nemo, loài cá này được yêu thích bởi màu sắc cam-trắng đặc trưng và hành vi cộng sinh độc đáo với hải quỳ. Cá thích nghi tốt với điều kiện hồ nuôi, dễ chăm sóc và ăn uống không kén chọn.",
-    specs: {
-      size: "5-8 cm",
-      temperature: "24-28°C",
-      ph: "8.1-8.4",
-      origin: "Thái Bình Dương",
-      minTankSize: "100L",
-      careLevel: "Dễ chăm sóc",
-      diet: "Thức ăn viên, tảo, thức ăn sống",
-      compatibility: "Hòa bình với đa số cá biển, cần hải quỳ đối tác",
-    },
-    createdAt: new Date("2024-01-15"),
-    updatedAt: new Date("2024-05-01"),
-    viewCount: 1240,
-  },
-  {
-    id: "2",
-    slug: "ca-dia-xanh-cobalt",
-    name: "Cá Đĩa Xanh Cobalt",
-    nameEn: "Cobalt Blue Discus",
-    latin: "Symphysodon aequifasciatus",
-    category: "Cá Đĩa",
-    categorySlug: "ca-dia",
-    status: "available",
-    tags: ["featured"],
-    description:
-      "Cá đĩa xanh cobalt với màu sắc tuyệt đẹp và thân hình tròn đặc trưng. Mệnh danh là 'vua' của các loài cá nhiệt đới nước ngọt.",
-    longDescription:
-      "Symphysodon aequifasciatus — hay còn gọi là Discus — là một trong những loài cá cảnh đắt giá và được săn đón nhiều nhất thế giới. Xuất xứ từ lưu vực sông Amazon, loài cá này đòi hỏi điều kiện nước sạch và ổn định. Màu xanh cobalt rực rỡ là kết quả của kỹ thuật lai tạo tinh tế từ Đức và Đông Nam Á.",
-    specs: {
-      size: "15-20 cm",
-      temperature: "28-32°C",
-      ph: "6.0-7.0",
-      origin: "Amazon / Lai tạo",
-      minTankSize: "200L",
-      careLevel: "Trung bình",
-      diet: "Thức ăn chuyên dụng cho Discus, trùn đỏ",
-      compatibility: "Đàn cùng loài, tránh cá hung hăng",
-    },
-    createdAt: new Date("2024-02-10"),
-    updatedAt: new Date("2024-04-20"),
-    viewCount: 890,
-  },
-  {
-    id: "3",
-    slug: "ca-buom-hoang-de",
-    name: "Cá Bướm Hoàng Đế",
-    nameEn: "Emperor Angelfish",
-    latin: "Pomacanthus imperator",
-    category: "Cá Biển",
-    categorySlug: "ca-bien",
-    status: "available",
-    tags: ["featured"],
-    description:
-      "Một trong những loài cá biển đẹp nhất với hoa văn kẻ sọc vàng-xanh rực rỡ. Cá trưởng thành có màu sắc khác hoàn toàn với cá con.",
-    longDescription:
-      "Pomacanthus imperator, hay Cá Thiên Thần Hoàng Đế, là một trong những loài cá biển được ngưỡng mộ nhất thế giới. Đặc điểm nổi bật là màu sắc biến đổi hoàn toàn theo tuổi — cá con có hoa văn xoáy xanh-trắng, trong khi cá trưởng thành có sọc vàng nổi bật trên nền xanh navy. Loài này đòi hỏi hồ lớn và kinh nghiệm nuôi cá biển.",
-    specs: {
-      size: "30-38 cm",
-      temperature: "23-27°C",
-      ph: "8.1-8.4",
-      origin: "Ấn Độ Dương, Thái Bình Dương",
-      minTankSize: "500L",
-      careLevel: "Khó",
-      diet: "Tảo, bọt biển, thức ăn đông lạnh",
-      compatibility: "Bán hung hăng, không nuôi chung cùng loài",
-    },
-    createdAt: new Date("2024-03-01"),
-    updatedAt: new Date("2024-05-10"),
-    viewCount: 650,
-  },
-  {
-    id: "4",
-    slug: "ca-la-han-campa",
-    name: "Cá La Hán Campa",
-    nameEn: "Campa Flowerhorn",
-    latin: "Cichlasoma sp. hybrid",
-    category: "Cá La Hán",
-    categorySlug: "ca-la-han",
-    status: "available",
-    tags: ["new"],
-    description:
-      "Cá la hán Campa với đầu u nổi bật và hoa văn hoa mai đặc trưng. Biểu tượng của may mắn và thịnh vượng trong văn hóa Á Đông.",
-    longDescription:
-      "Cá La Hán dòng Campa là kết quả của nhiều thập kỷ lai tạo tại Đông Nam Á. Nổi bật với đầu u (nuchal hump) phát triển to, hoa văn hoa mai sắc nét và màu sắc rực rỡ. Theo phong thủy, cá la hán được coi là mang lại may mắn, sức khỏe và tài lộc cho gia chủ.",
-    specs: {
-      size: "25-35 cm",
-      temperature: "26-30°C",
-      ph: "7.0-8.0",
-      origin: "Lai tạo (Đông Nam Á)",
-      minTankSize: "200L",
-      careLevel: "Dễ chăm sóc",
-      diet: "Thức ăn viên chuyên dụng La Hán, tôm tươi",
-      compatibility: "Nuôi đơn hoặc cặp đôi",
-    },
-    createdAt: new Date("2024-04-05"),
-    updatedAt: new Date("2024-05-15"),
-    viewCount: 780,
-  },
-  {
-    id: "5",
-    slug: "ca-bay-mau-guppy-duc",
-    name: "Cá Bảy Màu Guppy Đức",
-    nameEn: "German Guppy",
-    latin: "Poecilia reticulata",
-    category: "Cá Nhiệt Đới",
-    categorySlug: "ca-nhiet-doi",
-    status: "available",
-    tags: ["new"],
-    description:
-      "Guppy Đức với đuôi dài rực rỡ, đa màu sắc. Loài cá đẹp và dễ nuôi, lý tưởng cho người mới bắt đầu.",
-    specs: {
-      size: "3-5 cm",
-      temperature: "22-28°C",
-      ph: "7.0-8.5",
-      origin: "Đức (lai tạo)",
-      minTankSize: "40L",
-      careLevel: "Rất dễ",
-      diet: "Thức ăn viên nhỏ, tảo",
-      compatibility: "Hòa bình, đàn nhỏ",
-    },
-    createdAt: new Date("2024-05-01"),
-    updatedAt: new Date("2024-05-20"),
-    viewCount: 420,
-  },
-  {
-    id: "6",
-    slug: "ca-rong-bach-kim",
-    name: "Cá Rồng Châu Á Bạch Kim",
-    nameEn: "Platinum Asian Arowana",
-    latin: "Scleropages formosus",
-    category: "Cá Rồng",
-    categorySlug: "ca-rong",
-    status: "available",
-    tags: ["featured"],
-    description:
-      "Cá rồng bạch kim — loài cá quý hiếm và giá trị nhất trong thế giới cá cảnh. Mang ý nghĩa phong thủy đặc biệt, thu hút tài lộc.",
-    specs: {
-      size: "60-90 cm",
-      temperature: "25-30°C",
-      ph: "6.5-7.5",
-      origin: "Malaysia / Indonesia",
-      minTankSize: "1000L",
-      careLevel: "Khó",
-      diet: "Cá sống, tôm, cào cào, thức ăn chuyên dụng",
-      compatibility: "Nuôi đơn hoặc đàn cùng kích thước",
-    },
-    createdAt: new Date("2024-01-20"),
-    updatedAt: new Date("2024-05-05"),
-    viewCount: 2100,
-  },
-  {
-    id: "7",
-    slug: "ca-tang-vang",
-    name: "Cá Tang Vàng",
-    nameEn: "Yellow Tang",
-    latin: "Zebrasoma flavescens",
-    category: "Cá Biển",
-    categorySlug: "ca-bien",
-    status: "out_of_stock",
-    tags: [],
-    description:
-      "Cá tang vàng với màu vàng chanh rực rỡ, nổi bật trong bể rạn san hô. Hoạt động linh hoạt và tính tình hiền lành.",
-    specs: {
-      size: "15-20 cm",
-      temperature: "24-27°C",
-      ph: "8.1-8.4",
-      origin: "Hawaii",
-      minTankSize: "300L",
-      careLevel: "Trung bình",
-      diet: "Tảo, rau diếp, thức ăn dạng tảo khô",
-      compatibility: "Hòa bình, không nuôi 2 cá tang cùng loài",
-    },
-    createdAt: new Date("2024-02-15"),
-    updatedAt: new Date("2024-04-10"),
-    viewCount: 560,
-  },
-  {
-    id: "8",
-    slug: "ca-ky-cu-ngoc-trai",
-    name: "Tôm Ký Cư Ngọc Trai",
-    nameEn: "Cleaner Shrimp",
-    latin: "Lysmata amboinensis",
-    category: "Cá Biển",
-    categorySlug: "ca-bien",
-    status: "available",
-    tags: ["new"],
-    description:
-      "Tôm ký cư ngọc trai — 'bác sĩ' của hồ rạn san hô, chuyên làm sạch ký sinh trùng trên cá. Màu sắc đỏ-trắng bắt mắt.",
-    specs: {
-      size: "5-7 cm",
-      temperature: "23-28°C",
-      ph: "8.1-8.4",
-      origin: "Ấn Độ Dương",
-      minTankSize: "80L",
-      careLevel: "Dễ chăm sóc",
-      diet: "Ký sinh trùng, thức ăn thừa, thức ăn đông lạnh",
-      compatibility: "Hòa bình, tránh cá ăn tôm",
-    },
-    createdAt: new Date("2024-05-10"),
-    updatedAt: new Date("2024-05-20"),
-    viewCount: 310,
-  },
-];
-
-export const MOCK_CATEGORIES: Category[] = [
-  { slug: "ca-bien", name: "Cá Biển", nameEn: "Marine Fish", description: "Cá rạn san hô và các loài cá biển nhiệt đới đẹp nhất", count: 4 },
-  { slug: "ca-dia", name: "Cá Đĩa", nameEn: "Discus", description: "Vua của cá nhiệt đới nước ngọt với màu sắc rực rỡ", count: 12 },
-  { slug: "ca-la-han", name: "Cá La Hán", nameEn: "Flowerhorn", description: "Biểu tượng may mắn và thịnh vượng trong văn hóa Á Đông", count: 8 },
-  { slug: "ca-nhiet-doi", name: "Cá Nhiệt Đới", nameEn: "Tropical Fish", description: "Đa dạng các loài cá nhiệt đới nước ngọt dễ nuôi", count: 25 },
-  { slug: "ca-rong", name: "Cá Rồng", nameEn: "Arowana", description: "Loài cá quý hiếm nhất trong thế giới cá cảnh", count: 6 },
-  { slug: "phu-kien", name: "Phụ Kiện", nameEn: "Accessories", description: "Thiết bị, thức ăn và phụ kiện hồ cá chuyên nghiệp", count: 30 },
-];
+function logError(where: string, error: unknown) {
+  console.error(`[data] ${where}:`, error);
+}
 
 // ============================================================
-// CATEGORIES — Supabase repository
-// Mirrors the `categories` table (0003_tables_core.sql). Falls back
-// to MOCK_CATEGORIES when Supabase is unavailable.
+// ROW SHAPES + MAPPERS
 // ============================================================
-interface CategoryRow {
+interface MediaRow {
+  id: string;
+  media_type: "image" | "video";
+  url: string;
+  alt: string;
+  is_primary: boolean;
+  sort_order: number;
+}
+
+export interface ProductRow {
+  id: string;
   slug: string;
   name: string;
-  name_en: string;
+  name_en: string | null;
+  latin: string | null;
+  category_slug: string;
+  status: Product["status"];
+  tags: Product["tags"];
   description: string;
-  product_count: number;
+  long_description: string | null;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+  category: { name: string } | null;
+  media: MediaRow[] | null;
+}
+
+export const PRODUCT_COLUMNS =
+  "id, slug, name, name_en, latin, category_slug, status, tags, description, " +
+  "long_description, view_count, created_at, updated_at, " +
+  "category:categories(name), " +
+  "media:product_media(id, media_type, url, alt, is_primary, sort_order)";
+
+export function mapMedia(rows: MediaRow[] | null): ProductMedia[] {
+  return [...(rows ?? [])]
+    .sort((a, b) => Number(b.is_primary) - Number(a.is_primary) || a.sort_order - b.sort_order)
+    .map((m) => ({ id: m.id, type: m.media_type, url: m.url, alt: m.alt, isPrimary: m.is_primary }));
+}
+
+export function mapProductRow(row: ProductRow): Product {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    nameEn: row.name_en ?? undefined,
+    latin: row.latin ?? undefined,
+    category: row.category?.name ?? "",
+    categorySlug: row.category_slug,
+    status: row.status,
+    tags: row.tags ?? [],
+    description: row.description,
+    longDescription: row.long_description ?? undefined,
+    media: mapMedia(row.media),
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+    viewCount: row.view_count,
+  };
+}
+
+interface CategoryRow {
+  id: string;
+  slug: string;
+  name: string;
+  name_en: string | null;
+  description: string;
   image_url: string | null;
+  visible: boolean;
+  sort_order: number;
+  products: { count: number }[] | null;
 }
 
 function mapCategoryRow(row: CategoryRow): Category {
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
-    nameEn: row.name_en,
+    nameEn: row.name_en ?? undefined,
     description: row.description,
-    count: row.product_count,
+    count: row.products?.[0]?.count ?? 0,
     imageUrl: row.image_url ?? undefined,
+    visible: row.visible,
+    sortOrder: row.sort_order,
   };
 }
 
-/**
- * All categories, ordered by name. Reads from Supabase when configured,
- * otherwise returns the mock list. Same Category[] shape as MOCK_CATEGORIES.
- */
+export interface NewsRow {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: NewsArticle["content"];
+  featured_image: string;
+  featured_image_pos_x: number | null;
+  featured_image_pos_y: number | null;
+  featured_image_zoom: number | null;
+  published: boolean;
+  display_order: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const NEWS_COLUMNS =
+  "id, title, slug, excerpt, content, featured_image, featured_image_pos_x, " +
+  "featured_image_pos_y, featured_image_zoom, published, display_order, created_at, updated_at";
+
+export function mapNewsRow(row: NewsRow): NewsArticle {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    content: Array.isArray(row.content) ? row.content : [],
+    featuredImage: row.featured_image,
+    featuredImagePosX: row.featured_image_pos_x ?? undefined,
+    featuredImagePosY: row.featured_image_pos_y ?? undefined,
+    featuredImageZoom: row.featured_image_zoom ?? undefined,
+    published: row.published,
+    displayOrder: row.display_order ?? undefined,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+/** Visible categories in admin order, each with its public product count. */
 export async function getCategories(): Promise<Category[]> {
   const supabase = getReadClient();
   if (!supabase) return [...MOCK_CATEGORIES];
 
   const { data, error } = await supabase
     .from("categories")
-    .select("slug, name, name_en, description, product_count, image_url")
+    .select("id, slug, name, name_en, description, image_url, visible, sort_order, products(count)")
+    .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
-  if (error || !data) return [...MOCK_CATEGORIES];
-  return (data as CategoryRow[]).map(mapCategoryRow);
+  if (error || !data) {
+    logError("getCategories", error);
+    return [];
+  }
+  return (data as unknown as CategoryRow[]).map(mapCategoryRow);
 }
 
 // ============================================================
-// DATA HELPERS
+// PRODUCTS
 // ============================================================
-export function getProductBySlug(slug: string): Product | undefined {
-  return MOCK_PRODUCTS.find((p) => p.slug === slug);
+/** Every product the public may see (RLS hides hidden/deleted ones). */
+export async function getProducts(): Promise<Product[]> {
+  const supabase = getReadClient();
+  if (!supabase) return MOCK_PRODUCTS.filter((p) => p.status !== "hidden");
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    logError("getProducts", error);
+    return [];
+  }
+  return (data as unknown as ProductRow[]).map(mapProductRow);
 }
 
-export function getProductById(id: string): Product | undefined {
-  return MOCK_PRODUCTS.find((p) => p.id === id);
+export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+  const supabase = getReadClient();
+  if (!supabase) return MOCK_PRODUCTS.find((p) => p.slug === slug && p.status !== "hidden");
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) logError("getProductBySlug", error);
+  return data ? mapProductRow(data as unknown as ProductRow) : undefined;
 }
 
-export function getFeaturedProducts(limit = 4): Product[] {
-  return MOCK_PRODUCTS.filter(
-    (p) => p.tags.includes("featured") && p.status !== "hidden"
-  ).slice(0, limit);
+export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
+  const supabase = getReadClient();
+  if (!supabase) {
+    return MOCK_PRODUCTS.filter((p) => p.tags.includes("featured") && p.status !== "hidden").slice(0, limit);
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .contains("tags", ["featured"])
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error || !data) {
+    logError("getFeaturedProducts", error);
+    return [];
+  }
+  return (data as unknown as ProductRow[]).map(mapProductRow);
 }
 
-export function getNewArrivals(limit = 4): Product[] {
-  return MOCK_PRODUCTS.filter(
-    (p) => p.tags.includes("new") && p.status !== "hidden"
-  ).slice(0, limit);
-}
+export async function getRelatedProducts(product: Product, limit = 4): Promise<Product[]> {
+  const supabase = getReadClient();
+  if (!supabase) {
+    return MOCK_PRODUCTS.filter(
+      (p) => p.id !== product.id && p.categorySlug === product.categorySlug && p.status !== "hidden"
+    ).slice(0, limit);
+  }
 
-export function getProductsByCategory(categorySlug: string): Product[] {
-  return MOCK_PRODUCTS.filter(
-    (p) => p.categorySlug === categorySlug && p.status !== "hidden"
-  );
-}
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_COLUMNS)
+    .eq("category_slug", product.categorySlug)
+    .neq("id", product.id)
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
-export function searchProducts(query: string): Product[] {
-  const q = query.toLowerCase();
-  return MOCK_PRODUCTS.filter(
-    (p) =>
-      p.status !== "hidden" &&
-      (p.name.toLowerCase().includes(q) ||
-        p.latin.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q))
-  );
-}
-
-export function getRelatedProducts(product: Product, limit = 4): Product[] {
-  return MOCK_PRODUCTS.filter(
-    (p) =>
-      p.id !== product.id &&
-      p.categorySlug === product.categorySlug &&
-      p.status !== "hidden"
-  ).slice(0, limit);
+  if (error || !data) {
+    logError("getRelatedProducts", error);
+    return [];
+  }
+  return (data as unknown as ProductRow[]).map(mapProductRow);
 }
 
 // ============================================================
-// NEWS (MOCK — Phase 1 UI/CMS structure only, no database yet)
+// NEWS
 // ============================================================
-import type { NewsArticle } from "@/types";
+/** Published articles, newest first (RLS hides drafts and deleted ones). */
+export async function getPublishedNews(): Promise<NewsArticle[]> {
+  const supabase = getReadClient();
+  if (!supabase) {
+    return MOCK_NEWS
+      .filter((n) => n.published)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
 
-export const MOCK_NEWS: NewsArticle[] = [
+  const { data, error } = await supabase
+    .from("news_articles")
+    .select(NEWS_COLUMNS)
+    .order("created_at", { ascending: false });
+
+  if (error || !data) {
+    logError("getPublishedNews", error);
+    return [];
+  }
+  return (data as unknown as NewsRow[]).map(mapNewsRow);
+}
+
+export async function getNewsBySlug(slug: string): Promise<NewsArticle | undefined> {
+  const supabase = getReadClient();
+  if (!supabase) return MOCK_NEWS.find((n) => n.slug === slug && n.published);
+
+  const { data, error } = await supabase
+    .from("news_articles")
+    .select(NEWS_COLUMNS)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) logError("getNewsBySlug", error);
+  return data ? mapNewsRow(data as unknown as NewsRow) : undefined;
+}
+
+export async function getRelatedNews(current: NewsArticle, limit = 4): Promise<NewsArticle[]> {
+  return (await getPublishedNews()).filter((n) => n.id !== current.id).slice(0, limit);
+}
+
+// ============================================================
+// HOMEPAGE: BANNERS + VIDEOS
+// ============================================================
+// Shown when no banner has been uploaded yet (or Supabase is not
+// configured): the shop's own signboard, whole, on its own green.
+const DEFAULT_BANNERS: SlideData[] = [
   {
-    id: "n1",
-    title: "Cá Koi F1 chất lượng cao vừa nhập về cửa hàng",
-    slug: "ca-koi-f1-chat-luong-cao",
-    excerpt:
-      "Lô cá Koi F1 mới nhất từ trang trại Nhật Bản đã có mặt tại Cá Cảnh Thanh Liêm, với màu sắc rực rỡ và form dáng chuẩn thi đấu.",
-    featuredImage: "https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=1200&h=800&fit=crop",
-    published: true,
-    displayOrder: 1,
-    createdAt: new Date("2026-06-18"),
-    updatedAt: new Date("2026-06-18"),
-    content: [
-      { type: "heading", text: "Lô cá Koi F1 đặc biệt" },
-      { type: "paragraph", text: "Sau nhiều tháng chờ đợi, lô cá Koi F1 thế hệ mới đã chính thức cập bến cửa hàng Cá Cảnh Thanh Liêm. Đây là dòng cá được lai tạo trực tiếp từ các trại giống uy tín tại Niigata, Nhật Bản, nổi tiếng với chất lượng di truyền ổn định và màu sắc đồng đều." },
-      { type: "image", url: "https://images.unsplash.com/photo-1520301255226-bf5f144451c1?w=1200&h=700&fit=crop", caption: "Một góc hồ trưng bày cá Koi mới nhập" },
-      { type: "paragraph", text: "Khách hàng có thể trực tiếp đến cửa hàng để chiêm ngưỡng và lựa chọn những cá thể ưng ý nhất. Đội ngũ kỹ thuật của chúng tôi sẵn sàng tư vấn về cách chăm sóc và môi trường nuôi phù hợp." },
-      { type: "list", items: ["Kích thước từ 15-25cm", "Đầy đủ giấy chứng nhận nguồn gốc", "Bảo hành sức khỏe 7 ngày", "Hỗ trợ vận chuyển toàn quốc"] },
-    ],
-  },
-  {
-    id: "n2",
-    title: "Hướng dẫn chăm sóc hồ Koi trong mùa mưa",
-    slug: "huong-dan-cham-soc-ho-koi-mua-mua",
-    excerpt:
-      "Mùa mưa mang đến nhiều thách thức cho người nuôi cá Koi. Cùng tìm hiểu các biện pháp bảo vệ đàn cá hiệu quả nhất.",
-    featuredImage: "https://images.unsplash.com/photo-1502786129293-79981df4e689?w=1200&h=800&fit=crop",
-    published: true,
-    displayOrder: 2,
-    createdAt: new Date("2026-06-10"),
-    updatedAt: new Date("2026-06-10"),
-    content: [
-      { type: "heading", text: "Những rủi ro thường gặp" },
-      { type: "paragraph", text: "Mưa lớn làm thay đổi đột ngột độ pH và nhiệt độ nước, đồng thời cuốn theo bụi bẩn và vi khuẩn từ môi trường xung quanh vào hồ. Đây là nguyên nhân chính gây stress và bệnh cho cá Koi trong mùa mưa." },
-      { type: "list", items: ["Kiểm tra pH nước thường xuyên hơn", "Lắp mái che một phần cho hồ", "Tăng cường sục khí oxy", "Hạn chế cho ăn khi nước đục"] },
-      { type: "paragraph", text: "Ngoài ra, việc duy trì hệ thống lọc hoạt động ổn định trong giai đoạn này là vô cùng quan trọng để giảm thiểu tác động của nước mưa lên chất lượng nước trong hồ." },
-    ],
-  },
-  {
-    id: "n3",
-    title: "Cá La Hán mới: dòng Kamfa đầu gù ấn tượng",
-    slug: "ca-la-han-kamfa-dau-gu",
-    excerpt:
-      "Dòng La Hán Kamfa với phần đầu gù nổi bật và màu sắc châu lấp lánh đang là tâm điểm chú ý tại cửa hàng tuần này.",
-    featuredImage: "https://images.unsplash.com/photo-1524704796725-9fc3044a58b2?w=1200&h=800&fit=crop",
-    published: true,
-    displayOrder: 3,
-    createdAt: new Date("2026-06-05"),
-    updatedAt: new Date("2026-06-05"),
-    content: [
-      { type: "paragraph", text: "Cá La Hán Kamfa luôn được giới chơi cá cảnh săn đón nhờ phần đầu gù to và châu (hạt kim tuyến) phủ dày trên thân. Lô cá lần này được tuyển chọn kỹ lưỡng từ các bể giống chất lượng." },
-      { type: "image", url: "https://images.unsplash.com/photo-1524704796725-9fc3044a58b2?w=1200&h=700&fit=crop" },
-      { type: "paragraph", text: "Mỗi cá thể đều được theo dõi sức khỏe trong thời gian cách ly trước khi đưa ra trưng bày, đảm bảo khách hàng nhận được cá khỏe mạnh nhất." },
-    ],
-  },
-  {
-    id: "n4",
-    title: "Workshop miễn phí: Kỹ thuật xử lý nước hồ cá tại nhà",
-    slug: "workshop-ky-thuat-xu-ly-nuoc-ho-ca",
-    excerpt:
-      "Cá Cảnh Thanh Liêm tổ chức buổi chia sẻ miễn phí về kỹ thuật xử lý và duy trì chất lượng nước hồ cá dành cho người mới bắt đầu.",
-    featuredImage: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=1200&h=800&fit=crop",
-    published: true,
-    displayOrder: 4,
-    createdAt: new Date("2026-05-28"),
-    updatedAt: new Date("2026-05-28"),
-    content: [
-      { type: "heading", text: "Nội dung buổi chia sẻ" },
-      { type: "paragraph", text: "Buổi workshop sẽ tập trung vào các kiến thức nền tảng giúp người mới nuôi cá tự tin xử lý các vấn đề về chất lượng nước, từ chu trình nitơ cho đến cách sử dụng các loại vi sinh phù hợp." },
-      { type: "list", items: ["Chu trình nitơ trong hồ cá", "Cách đo và điều chỉnh pH/độ cứng", "Lựa chọn hệ thống lọc phù hợp", "Xử lý sự cố nước đục, tảo xanh"] },
-    ],
-  },
-  {
-    id: "n5",
-    title: "Cá Đĩa màu Cobalt Blue: vẻ đẹp của đại dương trong bể kính",
-    slug: "ca-dia-cobalt-blue",
-    excerpt:
-      "Dòng cá Đĩa Cobalt Blue với sắc xanh ánh kim đặc trưng đang là một trong những lựa chọn được yêu thích nhất hiện nay.",
-    featuredImage: "https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=1200&h=800&fit=crop",
-    published: true,
-    displayOrder: 5,
-    createdAt: new Date("2026-05-20"),
-    updatedAt: new Date("2026-05-20"),
-    content: [
-      { type: "paragraph", text: "Cá Đĩa Cobalt Blue được mệnh danh là viên ngọc xanh của thế giới cá cảnh nước ngọt. Với lớp vảy ánh kim đồng đều và dáng bơi uyển chuyển, đây là lựa chọn lý tưởng cho những bể thủy sinh cao cấp." },
-      { type: "paragraph", text: "Loài cá này đòi hỏi chất lượng nước ổn định và chế độ dinh dưỡng cân bằng để giữ được màu sắc rực rỡ theo thời gian." },
-    ],
-  },
-  {
-    id: "n6",
-    title: "Chương trình ưu đãi tháng 6: Giảm 10% phụ kiện hồ cá",
-    slug: "uu-dai-thang-6-phu-kien-ho-ca",
-    excerpt:
-      "Nhân dịp giữa năm, Cá Cảnh Thanh Liêm triển khai chương trình giảm giá 10% cho toàn bộ phụ kiện và thiết bị hồ cá.",
-    featuredImage: "https://images.unsplash.com/photo-1522069169874-c58ec4b76be5?w=1200&h=800&fit=crop",
-    published: false,
-    displayOrder: 6,
-    createdAt: new Date("2026-06-19"),
-    updatedAt: new Date("2026-06-19"),
-    content: [
-      { type: "paragraph", text: "Chương trình áp dụng cho toàn bộ máy bơm, máy lọc, đèn hồ và thức ăn cá nhập khẩu trong suốt tháng 6. Đây là cơ hội tốt để nâng cấp hệ thống hồ cá tại nhà với chi phí tiết kiệm hơn." },
-    ],
+    id: "default-signboard",
+    imageDataUrl: "/images/banner-sign.jpg",
+    objectPositionX: 50, objectPositionY: 50, zoom: 1,
+    fit: "contain", background: "#A8CF36",
   },
 ];
 
-export function getNewsBySlug(slug: string): NewsArticle | undefined {
-  return MOCK_NEWS.find((n) => n.slug === slug && n.published);
+interface BannerRow {
+  id: string;
+  image_url: string | null;
+  object_position_x: number | null;
+  object_position_y: number | null;
+  zoom: number;
+  fit: "cover" | "contain";
+  background: string | null;
 }
 
-export function getPublishedNews(): NewsArticle[] {
-  return MOCK_NEWS
-    .filter((n) => n.published)
-    .sort((a, b) => (b.createdAt as Date).getTime() - (a.createdAt as Date).getTime());
+export async function getBanners(): Promise<SlideData[]> {
+  const supabase = getReadClient();
+  if (!supabase) return DEFAULT_BANNERS;
+
+  const { data, error } = await supabase
+    .from("banners")
+    .select("id, image_url, object_position_x, object_position_y, zoom, fit, background")
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) {
+    logError("getBanners", error);
+    return DEFAULT_BANNERS;
+  }
+  const slides = (data as BannerRow[])
+    .filter((b) => b.image_url)
+    .map((b) => ({
+      id: b.id,
+      imageDataUrl: b.image_url ?? undefined,
+      objectPositionX: b.object_position_x ?? 50,
+      objectPositionY: b.object_position_y ?? 50,
+      zoom: Number(b.zoom) || 1,
+      fit: b.fit,
+      background: b.background ?? undefined,
+    }));
+  return slides.length > 0 ? slides : DEFAULT_BANNERS;
 }
 
-export function getRelatedNews(current: NewsArticle, limit = 4): NewsArticle[] {
-  return getPublishedNews()
-    .filter((n) => n.id !== current.id)
-    .slice(0, limit);
-}
+/** Clips for the homepage "Video thực tế" section. Empty until uploaded. */
+export async function getSiteVideos(): Promise<SiteVideo[]> {
+  const supabase = getReadClient();
+  if (!supabase) return [];
 
-export function searchNews(query: string): NewsArticle[] {
-  const q = query.toLowerCase();
-  return getPublishedNews().filter(
-    (n) =>
-      n.title.toLowerCase().includes(q) ||
-      n.excerpt.toLowerCase().includes(q) ||
-      n.content.some((b) => "text" in b && b.text.toLowerCase().includes(q))
-  );
-}
+  const { data, error } = await supabase
+    .from("videos")
+    .select("id, title, video_url, uploaded_at")
+    .order("uploaded_at", { ascending: false });
 
-export function isNewsTitleTaken(title: string, excludeId?: string): boolean {
-  const norm = title.trim().toLowerCase();
-  return MOCK_NEWS.some((n) => n.id !== excludeId && n.title.trim().toLowerCase() === norm);
+  if (error || !data) {
+    logError("getSiteVideos", error);
+    return [];
+  }
+  return (data as { id: string; title: string; video_url: string | null; uploaded_at: string }[])
+    .filter((v) => v.video_url)
+    .map((v) => ({ id: v.id, title: v.title, url: v.video_url!, uploadedAt: new Date(v.uploaded_at) }));
 }

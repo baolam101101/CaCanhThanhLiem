@@ -1,7 +1,8 @@
 import React from "react";
 import Link from "next/link";
-import { Fish, Star, Video, Images, Users, Plus } from "lucide-react";
+import { Fish, Star, Video, Images, Users, Plus, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { getPrimaryImageUrl } from "@/lib/utils";
 import type { Product } from "@/types";
 
 interface AdminDashboardProps {
@@ -95,8 +96,11 @@ export function AdminDashboard({ stats, recentProducts, role }: AdminDashboardPr
             {recentProducts.map((p, i) => (
               <li key={p.id}
                 className={`flex items-center gap-3 px-5 py-3.5 ${i < recentProducts.length - 1 ? "border-b border-surface-50" : ""}`}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl shrink-0"
+                <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                   style={{ backgroundColor: "#f6fbea" }}>
+                  {getPrimaryImageUrl(p)
+                    ? <img src={getPrimaryImageUrl(p)} alt="" className="w-full h-full object-cover" />
+                    : <ImageIcon size={15} className="text-brand-300" aria-hidden />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-surface-800 truncate">{p.name}</p>
@@ -105,10 +109,13 @@ export function AdminDashboard({ stats, recentProducts, role }: AdminDashboardPr
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                   p.status === "available" ? "bg-green-50 text-green-700" : "bg-surface-100 text-surface-500"
                 }`}>
-                  {p.status === "available" ? "Còn" : "Hết"}
+                  {p.status === "available" ? "Còn" : p.status === "out_of_stock" ? "Hết" : "Ẩn"}
                 </span>
               </li>
             ))}
+            {recentProducts.length === 0 && (
+              <li className="px-5 py-10 text-center text-sm text-surface-400">Chưa có sản phẩm nào</li>
+            )}
           </ul>
         </div>
       </div>

@@ -36,14 +36,14 @@ alter table admin_users    enable row level security;
 alter table banners        enable row level security;
 alter table videos         enable row level security;
 alter table products       enable row level security;
-alter table product_images enable row level security;
+alter table product_media  enable row level security;
 alter table news_articles  enable row level security;
 alter table orders         enable row level security;
 alter table order_items    enable row level security;
 
 -- ── categories ───────────────────────────────────────────────
 create policy categories_public_read on categories
-  for select to anon, authenticated using (true);
+  for select to anon, authenticated using (visible);
 create policy categories_admin_all on categories
   for all to authenticated using (is_admin()) with check (is_admin());
 
@@ -54,18 +54,18 @@ create policy products_public_read on products
 create policy products_admin_all on products
   for all to authenticated using (is_admin()) with check (is_admin());
 
--- ── product_images ───────────────────────────────────────────
-create policy product_images_public_read on product_images
+-- ── product_media ────────────────────────────────────────────
+create policy product_media_public_read on product_media
   for select to anon, authenticated
   using (
     exists (
       select 1 from products p
-      where p.id = product_images.product_id
+      where p.id = product_media.product_id
         and p.deleted_at is null
         and p.status <> 'hidden'
     )
   );
-create policy product_images_admin_all on product_images
+create policy product_media_admin_all on product_media
   for all to authenticated using (is_admin()) with check (is_admin());
 
 -- ── news_articles ────────────────────────────────────────────
@@ -130,7 +130,7 @@ grant all on all tables in schema public to service_role;
 -- Public read of site content (rows further filtered by the *_public_read
 -- policies). Admin-only tables are intentionally omitted from anon.
 grant select on
-  categories, products, product_images, news_articles, banners, videos
+  categories, products, product_media, news_articles, banners, videos
   to anon;
 
 -- Authenticated users get full DML; the *_admin_all / is_admin() policies

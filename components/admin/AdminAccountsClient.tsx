@@ -1,16 +1,24 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Trash2, X, Shield, User, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Plus, Trash2, X, Shield, User, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import type { Account } from "@/lib/auth/accounts";
 
 interface AdminAccountsClientProps {
   initialAccounts: Account[];
+  currentUserId: string;
 }
 
-export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProps) {
+const MIN_PASSWORD = 8;
+
+export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAccountsClientProps) {
+  // Password change: the account being edited, the two inputs, and state.
+  const [pwTarget, setPwTarget] = useState<Account | null>(null);
+  const [pwForm, setPwForm]     = useState({ password: "", confirm: "" });
+  const [pwError, setPwError]   = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
@@ -38,8 +46,8 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
     if (!form.username.trim() || !form.password.trim() || !form.displayName.trim()) {
       setFormError("Vui lòng điền đầy đủ thông tin"); return;
     }
-    if (form.password.length < 6) {
-      setFormError("Mật khẩu tối thiểu 6 ký tự"); return;
+    if (form.password.length < MIN_PASSWORD) {
+      setFormError(`Mật khẩu tối thiểu ${MIN_PASSWORD} ký tự`); return;
     }
     setLoading(true);
     try {
@@ -72,6 +80,33 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
     if (!res.ok) { showMsg(data.error, false); return; }
     await loadAccounts();
     showMsg(`Đã xóa tài khoản "${name}"`);
+  };
+
+  const openPassword = (acc: Account) => {
+    setPwTarget(acc); setPwForm({ password: "", confirm: "" }); setPwError("");
+  };
+
+  const handlePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwTarget) return;
+    if (pwForm.password.length < MIN_PASSWORD) { setPwError(`Mật khẩu tối thiểu ${MIN_PASSWORD} ký tự`); return; }
+    if (pwForm.password !== pwForm.confirm) { setPwError("Hai mật khẩu không khớp"); return; }
+    setPwSaving(true); setPwError("");
+    try {
+      const res = await fetch("/api/admin/accounts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: pwTarget.id, password: pwForm.password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setPwError(data.error ?? "Không đổi được mật khẩu"); return; }
+      showMsg(`Đã đổi mật khẩu cho "${pwTarget.displayName}"`);
+      setPwTarget(null);
+    } catch {
+      setPwError("Lỗi kết nối");
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   return (
@@ -135,8 +170,18 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
                 </p>
               </div>
 
+              {/* Change password */}
+              <button
+                onClick={() => openPassword(acc)}
+                className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all shrink-0"
+                aria-label={`Đổi mật khẩu ${acc.displayName}`}
+                title="Đổi mật khẩu"
+              >
+                <KeyRound size={15} />
+              </button>
+
               {/* Delete */}
-              {acc.role !== "superadmin" && (
+              {acc.role !== "superadmin" && acc.id !== currentUserId && (
                 <button
                   onClick={() => handleDelete(acc.id, acc.displayName)}
                   className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
@@ -158,6 +203,39 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
           <li>• <strong>Nhân viên</strong>: Thêm/sửa/xóa sản phẩm, video, banner — không quản lý tài khoản</li>
         </ul>
       </div>
+
+      {/* Change-password modal */}
+      {pwTarget && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={(e) => e.target === e.currentTarget && !pwSaving && setPwTarget(null)}
+        >
+          <form onSubmit={handlePassword} className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-float p-7 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl font-light text-surface-800">Đổi mật khẩu</h2>
+              <button type="button" onClick={() => setPwTarget(null)} disabled={pwSaving} className="p-2 rounded-lg hover:bg-surface-100">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-sm text-surface-500">Tài khoản: <strong>{pwTarget.displayName}</strong> (@{pwTarget.username})</p>
+            {pwError && (
+              <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
+                <AlertCircle size={15} className="shrink-0" /> {pwError}
+              </div>
+            )}
+            <input type="password" autoComplete="new-password" placeholder={`Mật khẩu mới (tối thiểu ${MIN_PASSWORD} ký tự)`}
+              value={pwForm.password} onChange={(e) => setPwForm((f) => ({ ...f, password: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-surface-200 px-4 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100" />
+            <input type="password" autoComplete="new-password" placeholder="Nhập lại mật khẩu mới"
+              value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
+              className="h-11 w-full rounded-xl border border-surface-200 px-4 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100" />
+            <div className="flex gap-3 pt-1">
+              <Button type="submit" variant="primary" className="flex-1" loading={pwSaving} disabled={pwSaving}>Đổi mật khẩu</Button>
+              <Button type="button" variant="outline" onClick={() => setPwTarget(null)} disabled={pwSaving}>Hủy</Button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Create modal */}
       {showModal && (
@@ -206,7 +284,7 @@ export function AdminAccountsClient({ initialAccounts }: AdminAccountsClientProp
                     type={showPw ? "text" : "password"}
                     value={form.password}
                     onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                    placeholder="Tối thiểu 6 ký tự"
+                    placeholder={`Tối thiểu ${MIN_PASSWORD} ký tự`}
                     className="h-11 w-full rounded-xl border border-surface-200 px-4 pr-11 text-sm outline-none focus:border-brand-400 focus:ring-3 focus:ring-brand-100"
                   />
                   <button type="button" onClick={() => setShowPw((v) => !v)}

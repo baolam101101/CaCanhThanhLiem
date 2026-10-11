@@ -6,69 +6,88 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { ImageCropTool, computeCroppedImageStyle } from "@/components/admin/ImageCropTool";
-import type { SlideData } from "@/components/sections/HeroBannerSlider";
+import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
+import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { checkFileForBucket } from "@/lib/admin/media";
+import type { AdminBanner } from "@/lib/admin/repo";
 
-interface BannerItem extends SlideData {
-  visible: boolean;
-  order: number;
-  imageName?: string;
+// Brand green, also the background of the shop signboard artwork.
+const DEFAULT_BACKGROUND = "#A8CF36";
+
+interface BannerForm extends Omit<AdminBanner, "id" | "order"> {
+  id?: string;
+  file?: File; // new image, uploaded on save
 }
 
-const DEFAULTS: BannerItem[] = [
-  {
-    id: "b_seed_landscape",
-    imageDataUrl: "https://images.unsplash.com/photo-1520301255226-bf5f144451c1?w=1600&h=900&fit=crop",
-    imageName: "koi-pond-landscape.jpg",
-    objectPositionX: 50, objectPositionY: 50, zoom: 1,
-    visible: true, order: 1,
-  },
-  {
-    id: "b_seed_portrait",
-    imageDataUrl: "https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=1080&h=1920&fit=crop",
-    imageName: "koi-fish-portrait.jpg",
-    objectPositionX: 50, objectPositionY: 50, zoom: 1,
-    visible: true, order: 2,
-  },
-];
+function BannerPreview({ b }: { b: Pick<AdminBanner, "imageUrl" | "objectPositionX" | "objectPositionY" | "zoom" | "fit" | "background"> }) {
+  return (
+    <div className="absolute inset-0" style={{ backgroundColor: b.fit === "contain" ? b.background || DEFAULT_BACKGROUND : undefined }}>
+      {b.imageUrl && (
+        <img src={b.imageUrl} alt="" style={computeCroppedImageStyle(b.objectPositionX, b.objectPositionY, b.zoom, b.fit)} />
+      )}
+    </div>
+  );
+}
 
-function BannerModal({ banner, onSave, onClose }: { banner: BannerItem | null; onSave: (b: BannerItem) => void; onClose: () => void }) {
+function BannerModal({ banner, onSave, onClose }: {
+  banner: AdminBanner | null;
+  onSave: (b: BannerForm) => Promise<void>;
+  onClose: () => void;
+}) {
   const isNew = !banner;
   const fileRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<BannerItem>(banner ?? {
-    id: `b_${Date.now()}`, visible: true, order: 99,
+  const [form, setForm] = useState<BannerForm>(banner ?? {
+    imageUrl: "", imageName: "", visible: true,
     objectPositionX: 50, objectPositionY: 50, zoom: 1,
+    fit: "cover", background: DEFAULT_BACKGROUND,
   });
-  const upd = (p: Partial<BannerItem>) => setForm((f) => ({ ...f, ...p }));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const upd = (p: Partial<BannerForm>) => setForm((f) => ({ ...f, ...p }));
 
-  const handleFile = async (file: File) => {
-    if (!file.type.startsWith("image/")) { alert("Vui lòng chọn file ảnh"); return; }
-    if (file.size > 15 * 1024 * 1024) { alert("Ảnh tối đa 15MB"); return; }
-    const r = new FileReader();
-    r.onload = () => upd({ imageDataUrl: r.result as string, imageName: file.name, objectPositionX: 50, objectPositionY: 50, zoom: 1 });
-    r.readAsDataURL(file);
+  const handleFile = (file: File) => {
+    const problem = checkFileForBucket("banners", file);
+    if (problem) { setError(problem); return; }
+    setError("");
+    if (form.file) URL.revokeObjectURL(form.imageUrl);
+    upd({ file, imageUrl: URL.createObjectURL(file), imageName: file.name, objectPositionX: 50, objectPositionY: 50, zoom: 1 });
   };
 
-  const save = () => {
-    if (!form.imageDataUrl) { alert("Vui lòng chọn ảnh banner"); return; }
-    onSave(form);
+  const save = async () => {
+    if (!form.imageUrl) { setError("Vui lòng chọn ảnh banner"); return; }
+    setSaving(true); setError("");
+    try {
+      await onSave(form);
+    } catch (e) {
+      setError((e as Error).message);
+      setSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/55 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      onClick={(e) => e.target === e.currentTarget && !saving && onClose()}>
       <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-modal max-h-[96vh] overflow-y-auto animate-slide-up sm:animate-fade-in">
         <div className="sticky top-0 bg-white border-b border-surface-100 flex items-center justify-between px-6 py-4 z-10">
           <h2 className="font-display font-semibold text-lg text-surface-800">{isNew ? "Thêm banner mới" : "Chỉnh sửa banner"}</h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-100 transition-colors"><X size={18} aria-hidden /></button>
+          <button onClick={onClose} disabled={saving} className="p-2 rounded-xl hover:bg-surface-100 transition-colors"><X size={18} aria-hidden /></button>
         </div>
         <div className="p-5 flex flex-col gap-5">
-          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+          {error && <div role="alert" className="p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">{error}</div>}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
-          {form.imageDataUrl ? (
+
+          {form.imageUrl ? (
             <>
-              <ImageCropTool src={form.imageDataUrl} aspectRatio="16/5"
-                posX={form.objectPositionX ?? 50} posY={form.objectPositionY ?? 50} zoom={form.zoom ?? 1}
-                onPosX={(v) => upd({ objectPositionX: v })} onPosY={(v) => upd({ objectPositionY: v })} onZoom={(v) => upd({ zoom: v })} />
+              {form.fit === "cover" ? (
+                <ImageCropTool src={form.imageUrl} aspectRatio="16/5"
+                  posX={form.objectPositionX} posY={form.objectPositionY} zoom={form.zoom}
+                  onPosX={(v) => upd({ objectPositionX: v })} onPosY={(v) => upd({ objectPositionY: v })} onZoom={(v) => upd({ zoom: v })} />
+              ) : (
+                <div className="relative w-full rounded-xl overflow-hidden border border-surface-200" style={{ aspectRatio: "16/5" }}>
+                  <BannerPreview b={form} />
+                </div>
+              )}
               <button type="button" onClick={() => fileRef.current?.click()} className="text-sm text-brand-600 hover:underline self-start">Đổi ảnh khác</button>
             </>
           ) : (
@@ -77,10 +96,35 @@ function BannerModal({ banner, onSave, onClose }: { banner: BannerItem | null; o
               <Upload size={24} className="text-surface-400" aria-hidden />
               <div className="text-center">
                 <p className="text-sm font-medium text-surface-700">Nhấn để chọn ảnh banner</p>
-                <p className="text-xs text-surface-400 mt-0.5">JPG, PNG, WebP - Tối đa 15MB</p>
+                <p className="text-xs text-surface-400 mt-0.5">JPG, PNG, WebP — Tối đa 8 MB</p>
               </div>
             </button>
           )}
+
+          {/* Whole-image mode, for artwork that must not be cropped (e.g. the shop signboard). */}
+          <div className="p-3 rounded-xl border border-surface-100 flex flex-col gap-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input type="checkbox" className="sr-only" checked={form.fit === "contain"}
+                  onChange={(e) => upd({ fit: e.target.checked ? "contain" : "cover" })} />
+                <div className={cn("w-10 h-5 rounded-full transition-colors", form.fit === "contain" ? "bg-brand-500" : "bg-surface-300")} />
+                <div className={cn("absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform", form.fit === "contain" ? "translate-x-5" : "translate-x-0.5")} />
+              </div>
+              <span>
+                <span className="block text-sm font-medium text-surface-700">Hiển thị trọn ảnh (không cắt)</span>
+                <span className="block text-xs text-surface-400">Dùng cho ảnh có chữ như biển hiệu; phần trống hai bên được tô màu nền.</span>
+              </span>
+            </label>
+            {form.fit === "contain" && (
+              <label className="flex items-center gap-3 pl-13 text-sm text-surface-700">
+                <input type="color" value={form.background || DEFAULT_BACKGROUND}
+                  onChange={(e) => upd({ background: e.target.value })}
+                  className="w-10 h-8 rounded border border-surface-200 cursor-pointer" />
+                Màu nền
+              </label>
+            )}
+          </div>
+
           <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-surface-100 hover:bg-surface-50 transition-colors">
             <div className="relative">
               <input type="checkbox" className="sr-only" checked={form.visible} onChange={(e) => upd({ visible: e.target.checked })} />
@@ -90,8 +134,8 @@ function BannerModal({ banner, onSave, onClose }: { banner: BannerItem | null; o
             <span className="text-sm font-medium text-surface-700">Hiển thị banner này</span>
           </label>
           <div className="flex gap-3">
-            <Button variant="primary" className="flex-1" onClick={save}>{isNew ? "Thêm banner" : "Lưu thay đổi"}</Button>
-            <Button variant="outline" onClick={onClose}>Hủy</Button>
+            <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={saving}>{isNew ? "Thêm banner" : "Lưu thay đổi"}</Button>
+            <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
           </div>
         </div>
       </div>
@@ -99,42 +143,71 @@ function BannerModal({ banner, onSave, onClose }: { banner: BannerItem | null; o
   );
 }
 
-export function AdminBannersClient() {
-  const [banners,    setBanners]    = useState<BannerItem[]>(DEFAULTS);
-  const [editTarget, setEditTarget] = useState<BannerItem | null | "new">(null);
-  const [previewing, setPreviewing] = useState<BannerItem | null>(null);
+export function AdminBannersClient({ initialBanners, configured }: { initialBanners: AdminBanner[]; configured: boolean }) {
+  const [banners,    setBanners]    = useState<AdminBanner[]>(initialBanners);
+  const [editTarget, setEditTarget] = useState<AdminBanner | null | "new">(null);
+  const [previewing, setPreviewing] = useState<AdminBanner | null>(null);
   const [toast,      setToast]      = useState<string | null>(null);
 
   const msg = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
   const sorted = [...banners].sort((a, b) => a.order - b.order);
 
-  const move = (id: string, dir: "up" | "down") => {
-    setBanners((prev) => {
-      const arr = [...prev].sort((a, b) => a.order - b.order);
-      const i = arr.findIndex((b) => b.id === id), j = dir === "up" ? i - 1 : i + 1;
-      if (j < 0 || j >= arr.length) return prev;
-      [arr[i].order, arr[j].order] = [arr[j].order, arr[i].order];
-      return arr;
-    });
+  const reload = async () => {
+    const { banners: fresh } = await adminApi<{ banners: AdminBanner[] }>("/api/admin/banners");
+    setBanners(fresh);
   };
 
-  const toggleVisible = (id: string) => { setBanners((p) => p.map((b) => b.id === id ? { ...b, visible: !b.visible } : b)); msg("Đã cập nhật trạng thái"); };
-  const deleteBanner  = (id: string) => { if (!confirm("Xoá banner này?")) return; setBanners((p) => p.filter((b) => b.id !== id)); msg("Đã xoá banner"); };
+  const move = async (id: string, dir: "up" | "down") => {
+    const arr = [...sorted];
+    const i = arr.findIndex((b) => b.id === id), j = dir === "up" ? i - 1 : i + 1;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const previous = banners;
+    setBanners(arr.map((b, k) => ({ ...b, order: k + 1 })));
+    try {
+      await adminApi("/api/admin/reorder", { method: "POST", body: { table: "banners", ids: arr.map((b) => b.id) } });
+    } catch (e) { setBanners(previous); msg((e as Error).message); }
+  };
 
-  const handleSave = (saved: BannerItem) => {
-    setBanners((prev) => {
-      const ex = prev.find((b) => b.id === saved.id);
-      if (ex) return prev.map((b) => b.id === saved.id ? saved : b);
-      return [...prev, { ...saved, order: prev.length + 1 }];
-    });
+  const toggleVisible = async (b: AdminBanner) => {
+    const visible = !b.visible;
+    setBanners((p) => p.map((x) => (x.id === b.id ? { ...x, visible } : x)));
+    try {
+      await adminApi(`/api/admin/banners/${b.id}`, { method: "PATCH", body: { visible } });
+      msg(visible ? "Đã hiện banner" : "Đã ẩn banner");
+    } catch (e) {
+      setBanners((p) => p.map((x) => (x.id === b.id ? { ...x, visible: b.visible } : x)));
+      msg((e as Error).message);
+    }
+  };
+
+  const deleteBanner = async (id: string) => {
+    if (!confirm("Xoá banner này?")) return;
+    try {
+      await adminApi(`/api/admin/banners/${id}`, { method: "DELETE" });
+      setBanners((p) => p.filter((b) => b.id !== id));
+      msg("Đã xoá banner");
+    } catch (e) { msg((e as Error).message); }
+  };
+
+  const handleSave = async (form: BannerForm) => {
+    let image: { imageUrl: string; storagePath?: string } = { imageUrl: form.imageUrl };
+    if (form.file) {
+      const up = await uploadMedia("banners", form.file);
+      URL.revokeObjectURL(form.imageUrl);
+      image = { imageUrl: up.url, storagePath: up.path };
+    }
+    const body = {
+      ...image,
+      imageName: form.imageName,
+      objectPositionX: form.objectPositionX, objectPositionY: form.objectPositionY, zoom: form.zoom,
+      fit: form.fit, background: form.background, visible: form.visible,
+    };
+    if (form.id) await adminApi(`/api/admin/banners/${form.id}`, { method: "PATCH", body });
+    else await adminApi("/api/admin/banners", { method: "POST", body });
+    await reload();
     setEditTarget(null); msg("Đã lưu banner");
   };
-
-  const Thumb = ({ b }: { b: BannerItem }) => (
-    <div className="relative overflow-hidden rounded-lg shrink-0 bg-surface-100" style={{ width: 80, height: 28 }}>
-      {b.imageDataUrl && <img src={b.imageDataUrl} alt="" style={computeCroppedImageStyle(b.objectPositionX ?? 50, b.objectPositionY ?? 50, b.zoom ?? 1)} />}
-    </div>
-  );
 
   return (
     <div>
@@ -143,33 +216,41 @@ export function AdminBannersClient() {
           <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quản lý Banner</h1>
           <p className="text-sm text-surface-500 mt-1">{sorted.filter((b) => b.visible).length}/{banners.length} đang hiển thị</p>
         </div>
-        <Button variant="primary" onClick={() => setEditTarget("new")}><Plus size={15} /> Thêm banner</Button>
+        <Button variant="primary" disabled={!configured} onClick={() => setEditTarget("new")}><Plus size={15} /> Thêm banner</Button>
       </div>
+
+      {!configured && <NotConfiguredNotice />}
 
       {sorted.length === 0 ? (
         <div className="text-center py-16 border-2 border-dashed border-surface-200 rounded-2xl">
-          <p className="text-sm text-surface-400 mb-3">Chưa có banner nào</p>
-          <Button variant="primary" onClick={() => setEditTarget("new")}><Plus size={15} /> Thêm banner đầu tiên</Button>
+          <p className="text-sm text-surface-400 mb-1">Chưa có banner nào</p>
+          <p className="text-xs text-surface-400 mb-4">Khi chưa có banner, trang chủ hiển thị ảnh biển hiệu mặc định.</p>
+          {configured && <Button variant="primary" onClick={() => setEditTarget("new")}><Plus size={15} /> Thêm banner đầu tiên</Button>}
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
           {sorted.map((b, i) => (
             <div key={b.id} className={cn("bg-white rounded-xl border shadow-card flex items-center gap-3 px-4 py-3 transition-opacity", !b.visible && "opacity-55")}>
               <button onClick={() => setPreviewing(b)} className="shrink-0 rounded-lg overflow-hidden hover:ring-2 hover:ring-brand-300 transition-all" aria-label="Xem lớn">
-                <Thumb b={b} />
+                <div className="relative overflow-hidden rounded-lg bg-surface-100" style={{ width: 80, height: 28 }}>
+                  <BannerPreview b={b} />
+                </div>
               </button>
               <div className="flex-1 min-w-0">
-                {!b.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500 mb-0.5 inline-block">Ẩn</span>}
-                <p className="text-sm font-medium text-surface-800 truncate">{b.imageName ?? "Ảnh banner"}</p>
+                <div className="flex gap-1 mb-0.5">
+                  {!b.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500">Ẩn</span>}
+                  {b.fit === "contain" && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">Trọn ảnh</span>}
+                </div>
+                <p className="text-sm font-medium text-surface-800 truncate">{b.imageName || "Ảnh banner"}</p>
               </div>
               <div className="flex flex-col gap-0.5 shrink-0">
-                <button onClick={() => move(b.id, "up")} disabled={i === 0} className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
-                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1} className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
+                <button onClick={() => move(b.id, "up")} disabled={i === 0} aria-label="Lên trên" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
+                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1} aria-label="Xuống dưới" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
               </div>
               <div className="flex items-center gap-1 border-l border-surface-100 pl-2 shrink-0">
-                <button onClick={() => setEditTarget(b)} className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Edit2 size={14} /></button>
-                <button onClick={() => toggleVisible(b.id)} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all">{b.visible ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                <button onClick={() => deleteBanner(b.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={14} /></button>
+                <button onClick={() => setEditTarget(b)} aria-label="Sửa" className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Edit2 size={14} /></button>
+                <button onClick={() => toggleVisible(b)} aria-label={b.visible ? "Ẩn" : "Hiện"} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all">{b.visible ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                <button onClick={() => deleteBanner(b.id)} aria-label="Xóa" className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
@@ -177,8 +258,8 @@ export function AdminBannersClient() {
       )}
 
       {editTarget !== null && <BannerModal banner={editTarget === "new" ? null : editTarget} onSave={handleSave} onClose={() => setEditTarget(null)} />}
-      {previewing && previewing.imageDataUrl && (
-        <MediaPreviewModal media={{ type: "image", src: previewing.imageDataUrl, name: previewing.imageName }}
+      {previewing && previewing.imageUrl && (
+        <MediaPreviewModal media={{ type: "image", src: previewing.imageUrl, name: previewing.imageName }}
           onClose={() => setPreviewing(null)}
           onReplace={() => { setEditTarget(previewing); setPreviewing(null); }}
           onDelete={() => { deleteBanner(previewing.id); setPreviewing(null); }} />

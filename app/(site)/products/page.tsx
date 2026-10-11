@@ -2,15 +2,17 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ProductsClient } from "@/components/product/ProductsClient";
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from "@/lib/data";
+import { getProducts, getCategories } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Sản phẩm",
   description:
-    "Khám phá hơn 200 loài cá cảnh quý hiếm nhập khẩu tại Cá Cảnh Thanh Liêm. Cá biển, cá đĩa, cá la hán, cá rồng và nhiều hơn nữa.",
+    "Khám phá các dòng Cá Koi & Koi Đuôi Dài tuyển chọn, nuôi dưỡng trực tiếp tại Trang Trại Cá Cảnh Thanh Liêm.",
 };
 
-export default function ProductsPage() {
+export default async function ProductsPage() {
+  const [products, categories] = await Promise.all([getProducts(), getCategories()]);
+
   return (
     <>
       <PageHeader
@@ -40,10 +42,7 @@ export default function ProductsPage() {
           </div>
         }
       >
-        <ProductsClient
-          initialProducts={MOCK_PRODUCTS}
-          categories={MOCK_CATEGORIES}
-        />
+        <ProductsClient initialProducts={products} categories={categories} />
       </Suspense>
     </>
   );

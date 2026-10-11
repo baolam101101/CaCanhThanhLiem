@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getProductBySlug, MOCK_PRODUCTS, getRelatedProducts } from "@/lib/data";
+import { getProductBySlug, getProducts, getRelatedProducts } from "@/lib/data";
 import { ProductDetailClient } from "@/components/product/ProductDetailClient";
 import { ProductCard } from "@/components/product/ProductCard";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -9,12 +9,12 @@ import { PageHeader } from "@/components/shared/PageHeader";
 interface Props { params: Promise<{ slug: string }>; }
 
 export async function generateStaticParams() {
-  return MOCK_PRODUCTS.map((p) => ({ slug: p.slug }));
+  return (await getProducts()).map((p) => ({ slug: p.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return { title: "Không tìm thấy" };
   return {
     title: product.name,
@@ -24,10 +24,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product || product.status === "hidden") notFound();
 
-  const related = getRelatedProducts(product, 4);
+  const related = await getRelatedProducts(product, 4);
 
   return (
     <>
@@ -35,7 +35,10 @@ export default async function ProductDetailPage({ params }: Props) {
         breadcrumbs={[
           { label: "Trang chủ", href: "/" },
           { label: "Sản phẩm", href: "/products" },
-          { label: product.category, href: `/products?category=${product.categorySlug}` },
+          // The category name is empty when its category is hidden.
+          ...(product.category
+            ? [{ label: product.category, href: `/products?category=${product.categorySlug}` }]
+            : []),
           { label: product.name },
         ]}
         title={<span className="sr-only">{product.name}</span>}

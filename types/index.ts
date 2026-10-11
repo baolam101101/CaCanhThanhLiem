@@ -5,30 +5,31 @@
 export type ProductStatus = "available" | "out_of_stock" | "hidden";
 export type ProductTag = "featured" | "new";
 export type OrderStatus = "pending" | "contacted" | "completed" | "cancelled";
-export type CategorySlug =
-  | "ca-bien"
-  | "ca-dia"
-  | "ca-la-han"
-  | "ca-nhiet-doi"
-  | "ca-rong"
-  | "phu-kien";
+// Categories are created from the admin panel, so slugs are open-ended
+// (URL-safe text, enforced by a check constraint in the database).
+export type CategorySlug = string;
 
 // ============================================================
 // PRODUCT
 // ============================================================
+// Not collected by the admin form yet and not shown on the site, so
+// every field is optional (all spec_* columns are nullable).
 export interface ProductSpec {
-  size: string;         // e.g. "5-8 cm"
-  temperature: string;  // e.g. "24-28°C"
-  ph: string;           // e.g. "8.1-8.4"
-  origin: string;       // e.g. "Thái Bình Dương"
-  minTankSize: string;  // e.g. "100L"
-  careLevel: "Rất dễ" | "Dễ chăm sóc" | "Trung bình" | "Khó" | "Rất khó";
+  size?: string;         // e.g. "5-8 cm"
+  temperature?: string;  // e.g. "24-28°C"
+  ph?: string;           // e.g. "8.1-8.4"
+  origin?: string;       // e.g. "Thái Bình Dương"
+  minTankSize?: string;  // e.g. "100L"
+  careLevel?: "Rất dễ" | "Dễ chăm sóc" | "Trung bình" | "Khó" | "Rất khó";
   diet?: string;
   compatibility?: string;
 }
 
-export interface ProductImage {
+// A product photo or video (table product_media). The primary item is
+// the thumbnail and is always an image.
+export interface ProductMedia {
   id: string;
+  type: "image" | "video";
   url: string;
   alt: string;
   isPrimary: boolean;
@@ -39,15 +40,15 @@ export interface Product {
   slug: string;
   name: string;        // Vietnamese name
   nameEn?: string;     // English name
-  latin: string;       // Scientific name
+  latin?: string;      // Scientific name
   category: string;    // Category display name
   categorySlug: CategorySlug;
   status: ProductStatus;
   tags: ProductTag[];
   description: string;
   longDescription?: string;
-  specs: ProductSpec;
-  images?: ProductImage[];
+  specs?: ProductSpec;
+  media?: ProductMedia[];
   createdAt: Date;
   updatedAt: Date;
   viewCount?: number;
@@ -57,12 +58,26 @@ export interface Product {
 // CATEGORY
 // ============================================================
 export interface Category {
+  id?: string;
   slug: string;
   name: string;
-  nameEn: string;
+  nameEn?: string;
   description: string;
   count: number;
   imageUrl?: string;
+  visible?: boolean;
+  sortOrder?: number;
+}
+
+// ============================================================
+// HOMEPAGE MEDIA
+// ============================================================
+// A clip in the homepage "Video thực tế" section (table videos).
+export interface SiteVideo {
+  id: string;
+  title: string;
+  url: string;
+  uploadedAt: Date;
 }
 
 // ============================================================

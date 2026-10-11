@@ -2,36 +2,63 @@
 -- 0010_storage.sql
 -- Supabase Storage buckets + access policies.
 --
--- Bucket file_size_limit / MIME lists mirror the client-side upload
--- guards already in the admin UI (e.g. AdminVideosClient enforces a
--- 200 MB video cap). Buckets are public-read; writes are admin-only.
+-- Buckets are public-read; writes are admin-only. Uploads come straight
+-- from the admin panel to Storage through signed upload URLs issued by
+-- the server, so these limits are the real ceiling a file must fit in.
+--
+--   * product-images  — product photos
+--   * product-videos  — product videos
+--   * banners         — homepage banner images
+--   * site-videos     — the homepage "Video thực tế" section
+--   * news-images     — news featured / inline images
+--
+-- Video buckets are capped at 50 MB: the Supabase Free plan's global
+-- per-file limit, which no bucket can exceed. Raise them (and the
+-- matching checks in the admin panel) after moving to a paid plan.
+--
+-- Idempotent: safe to re-run. Buckets are upserted and policies are
+-- dropped and recreated.
+--
+-- Two Supabase rules this file must respect:
+--   * storage.objects is owned by supabase_storage_admin, so it cannot
+--     be ALTERed from SQL (42501 "must be owner of table objects"). RLS
+--     on it is already enabled by Supabase; CREATE POLICY is permitted.
+--   * Rows in storage tables cannot be DELETEd from SQL
+--     (storage.protect_delete). Remove buckets/files via the Dashboard
+--     or the Storage API.
 -- ============================================================
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
-  ('product-images', 'product-images', true,   5242880,  array['image/jpeg','image/png','image/webp','image/gif']),
-  ('news-images',    'news-images',    true,   5242880,  array['image/jpeg','image/png','image/webp','image/gif']),
-  ('banners',        'banners',        true,   8388608,  array['image/jpeg','image/png','image/webp']),
-  ('videos',         'videos',         true, 209715200,  array['video/mp4','video/webm','video/quicktime'])
-on conflict (id) do nothing;
+  ('product-images', 'product-images', true,  5242880, array['image/jpeg','image/png','image/webp','image/gif']),
+  ('product-videos', 'product-videos', true, 52428800, array['video/mp4','video/webm','video/quicktime']),
+  ('banners',        'banners',        true,  8388608, array['image/jpeg','image/png','image/webp']),
+  ('site-videos',    'site-videos',    true, 52428800, array['video/mp4','video/webm','video/quicktime']),
+  ('news-images',    'news-images',    true,  5242880, array['image/jpeg','image/png','image/webp','image/gif'])
+on conflict (id) do update
+  set public             = excluded.public,
+      file_size_limit    = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
--- Storage RLS lives on storage.objects (Supabase enables it by default).
-alter table storage.objects enable row level security;
+drop policy if exists "Public read media"   on storage.objects;
+drop policy if exists "Admins insert media" on storage.objects;
+drop policy if exists "Admins update media" on storage.objects;
+drop policy if exists "Admins delete media" on storage.objects;
 
--- Public read for every media bucket.
+-- Anyone can read media in the site buckets.
 create policy "Public read media"
   on storage.objects
   for select
   to anon, authenticated
-  using (bucket_id in ('product-images', 'news-images', 'banners', 'videos'));
+  using (bucket_id in ('product-images', 'product-videos', 'banners', 'site-videos', 'news-images'));
 
--- Only active admins may upload / modify / delete media objects.
+-- Only admins can upload / replace / remove media.
 create policy "Admins insert media"
   on storage.objects
   for insert
   to authenticated
   with check (
-    bucket_id in ('product-images', 'news-images', 'banners', 'videos')
+    bucket_id in ('product-images', 'product-videos', 'banners', 'site-videos', 'news-images')
     and public.is_admin()
   );
 
@@ -40,11 +67,11 @@ create policy "Admins update media"
   for update
   to authenticated
   using (
-    bucket_id in ('product-images', 'news-images', 'banners', 'videos')
+    bucket_id in ('product-images', 'product-videos', 'banners', 'site-videos', 'news-images')
     and public.is_admin()
   )
   with check (
-    bucket_id in ('product-images', 'news-images', 'banners', 'videos')
+    bucket_id in ('product-images', 'product-videos', 'banners', 'site-videos', 'news-images')
     and public.is_admin()
   );
 
@@ -53,6 +80,6 @@ create policy "Admins delete media"
   for delete
   to authenticated
   using (
-    bucket_id in ('product-images', 'news-images', 'banners', 'videos')
+    bucket_id in ('product-images', 'product-videos', 'banners', 'site-videos', 'news-images')
     and public.is_admin()
   );

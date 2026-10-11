@@ -9,8 +9,8 @@ export const metadata: Metadata = {
     "Cập nhật tin tức, kiến thức chăm sóc cá cảnh và các chương trình ưu đãi mới nhất từ Cá Cảnh Thanh Liêm.",
 };
 
-export default function NewsPage() {
-  const news = getPublishedNews();
+export default async function NewsPage() {
+  const news = await getPublishedNews();
 
   return (
     <>

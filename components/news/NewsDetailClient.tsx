@@ -21,18 +21,20 @@ export function NewsDetailClient({ article }: { article: NewsArticle }) {
       </h1>
       <p className="text-xs text-surface-400 mb-6">{formatDate(article.createdAt)}</p>
 
-      {/* Featured image */}
-      <button
-        onClick={() => setPreviewSrc(article.featuredImage)}
-        className="relative block w-full aspect-video rounded-2xl overflow-hidden bg-surface-100 mb-8 shadow-card hover:opacity-95 transition-opacity cursor-zoom-in"
-        aria-label="Xem ảnh lớn"
-      >
-        <img
-          src={article.featuredImage}
-          alt={article.title}
-          style={computeCroppedImageStyle(article.featuredImagePosX ?? 50, article.featuredImagePosY ?? 50, article.featuredImageZoom ?? 1)}
-        />
-      </button>
+      {/* Featured image (articles may be saved without one) */}
+      {article.featuredImage && (
+        <button
+          onClick={() => setPreviewSrc(article.featuredImage)}
+          className="relative block w-full aspect-video rounded-2xl overflow-hidden bg-surface-100 mb-8 shadow-card hover:opacity-95 transition-opacity cursor-zoom-in"
+          aria-label="Xem ảnh lớn"
+        >
+          <img
+            src={article.featuredImage}
+            alt={article.title}
+            style={computeCroppedImageStyle(article.featuredImagePosX ?? 50, article.featuredImagePosY ?? 50, article.featuredImageZoom ?? 1)}
+          />
+        </button>
+      )}
 
       {/* Content blocks */}
       <div className="flex flex-col gap-5">

@@ -2,75 +2,92 @@
 
 import React, { useState } from "react";
 import { Plus, Edit2, Trash2, X, ArrowUp, ArrowDown } from "lucide-react";
-import { cn, slugify } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
-
-interface Category {
-  id: string; slug: string; name: string; description: string;
-  productCount: number; visible: boolean; order: number;
-}
-
-const INITIAL: Category[] = [
-  { id:"c1", slug:"ca-koi",       name:"Cá Koi",       description:"Cá chép Koi Việt & Nhật nhập khẩu chính hãng", productCount:12, visible:true, order:1 },
-  { id:"c2", slug:"ca-dia",       name:"Cá Đĩa",       description:"Vua của cá nhiệt đới nước ngọt",               productCount:8,  visible:true, order:2 },
-  { id:"c3", slug:"ca-la-han",    name:"Cá La Hán",    description:"Biểu tượng may mắn và thịnh vượng",             productCount:6,  visible:true, order:3 },
-  { id:"c4", slug:"ca-nhiet-doi", name:"Cá Nhiệt Đới", description:"Đa dạng các loài cá nhiệt đới",                 productCount:20, visible:true, order:4 },
-  { id:"c5", slug:"ca-rong",      name:"Cá Rồng",      description:"Loài cá quý hiếm nhất trong thế giới cá cảnh",  productCount:4,  visible:true, order:5 },
-  { id:"c6", slug:"phu-kien",     name:"Phụ Kiện",     description:"Thiết bị, thức ăn và phụ kiện hồ cá",           productCount:30, visible:true, order:6 },
-];
+import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
+import { adminApi } from "@/lib/admin/client";
+import type { Category } from "@/types";
 
 type ModalMode = "add" | "edit" | null;
 
-export function AdminCategoriesClient() {
-  const [cats,    setCats]    = useState<Category[]>(INITIAL);
+export function AdminCategoriesClient({ initialCategories, configured }: { initialCategories: Category[]; configured: boolean }) {
+  const [cats,    setCats]    = useState<Category[]>(initialCategories);
   const [mode,    setMode]    = useState<ModalMode>(null);
   const [editing, setEditing] = useState<Category | null>(null);
   const [form,    setForm]    = useState({ name: "", description: "" });
   const [err,     setErr]     = useState("");
+  const [busy,    setBusy]    = useState(false);
   const [toast,   setToast]   = useState<string | null>(null);
 
   const msg = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
-  const sorted = [...cats].sort((a, b) => a.order - b.order);
+  const sorted = [...cats].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+  const reload = async () => {
+    const { categories } = await adminApi<{ categories: Category[] }>("/api/admin/categories");
+    setCats(categories);
+  };
 
   const open = (m: ModalMode, cat?: Category) => {
     setMode(m); setEditing(cat ?? null); setErr("");
     setForm(cat ? { name: cat.name, description: cat.description } : { name: "", description: "" });
   };
 
-  const save = () => {
+  const save = async () => {
     const name = form.name.trim();
     if (!name) { setErr("Vui lòng nhập tên danh mục"); return; }
-    const slug = slugify(name);
-    if (mode === "add") {
-      if (cats.find((c) => c.slug === slug)) { setErr("Danh mục này đã tồn tại"); return; }
-      setCats((p) => [...p, { id: `c_${Date.now()}`, slug, name, description: form.description, productCount: 0, visible: true, order: p.length + 1 }]);
-      msg(`Đã thêm danh mục "${name}"`);
-    } else if (editing) {
-      setCats((p) => p.map((c) => c.id === editing.id ? { ...c, name, slug, description: form.description } : c));
-      msg(`Đã cập nhật "${name}"`);
+    setBusy(true); setErr("");
+    try {
+      if (mode === "add") {
+        await adminApi("/api/admin/categories", { method: "POST", body: { name, description: form.description } });
+        msg(`Đã thêm danh mục "${name}"`);
+      } else if (editing) {
+        await adminApi(`/api/admin/categories/${editing.id}`, { method: "PATCH", body: { name, description: form.description } });
+        msg(`Đã cập nhật "${name}"`);
+      }
+      await reload();
+      setMode(null); setEditing(null);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
     }
-    setMode(null); setEditing(null);
   };
 
-  const del = (id: string) => {
-    const c = cats.find((x) => x.id === id);
-    if (!c) return;
-    if (c.productCount > 0) { msg(`Không thể xóa — còn ${c.productCount} sản phẩm`); return; }
-    if (!confirm(`Xóa danh mục "${c.name}"?`)) return;
-    setCats((p) => p.filter((x) => x.id !== id)); msg(`Đã xóa "${c.name}"`);
+  const del = async (cat: Category) => {
+    if (cat.count > 0) { msg(`Không thể xóa — còn ${cat.count} sản phẩm`); return; }
+    if (!confirm(`Xóa danh mục "${cat.name}"?`)) return;
+    try {
+      await adminApi(`/api/admin/categories/${cat.id}`, { method: "DELETE" });
+      setCats((p) => p.filter((x) => x.id !== cat.id));
+      msg(`Đã xóa "${cat.name}"`);
+    } catch (e) { msg((e as Error).message); }
   };
 
-  const toggle = (id: string) => setCats((p) => p.map((c) => c.id === id ? { ...c, visible: !c.visible } : c));
+  const toggle = async (cat: Category) => {
+    const visible = !(cat.visible ?? true);
+    setCats((p) => p.map((c) => c.id === cat.id ? { ...c, visible } : c));
+    try {
+      await adminApi(`/api/admin/categories/${cat.id}`, { method: "PATCH", body: { visible } });
+    } catch (e) {
+      setCats((p) => p.map((c) => c.id === cat.id ? { ...c, visible: !visible } : c));
+      msg((e as Error).message);
+    }
+  };
 
-  const move = (id: string, dir: "up" | "down") => {
-    setCats((prev) => {
-      const arr = [...prev].sort((a, b) => a.order - b.order);
-      const i = arr.findIndex((c) => c.id === id);
-      const j = dir === "up" ? i - 1 : i + 1;
-      if (j < 0 || j >= arr.length) return prev;
-      [arr[i].order, arr[j].order] = [arr[j].order, arr[i].order];
-      return arr;
-    });
+  const move = async (id: string | undefined, dir: "up" | "down") => {
+    const arr = [...sorted];
+    const i = arr.findIndex((c) => c.id === id);
+    const j = dir === "up" ? i - 1 : i + 1;
+    if (j < 0 || j >= arr.length) return;
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    const previous = cats;
+    setCats(arr.map((c, k) => ({ ...c, sortOrder: k + 1 })));
+    try {
+      await adminApi("/api/admin/reorder", { method: "POST", body: { table: "categories", ids: arr.map((c) => c.id) } });
+    } catch (e) {
+      setCats(previous);
+      msg((e as Error).message);
+    }
   };
 
   return (
@@ -80,8 +97,16 @@ export function AdminCategoriesClient() {
           <h1 className="font-display font-semibold text-2xl md:text-3xl text-surface-800">Quản lý danh mục</h1>
           <p className="text-sm text-surface-500 mt-1">{cats.length} danh mục</p>
         </div>
-        <Button variant="primary" onClick={() => open("add")}><Plus size={15} /> Thêm danh mục</Button>
+        <Button variant="primary" onClick={() => open("add")} disabled={!configured}><Plus size={15} /> Thêm danh mục</Button>
       </div>
+
+      {!configured && <NotConfiguredNotice />}
+
+      {configured && cats.length === 0 && (
+        <p className="py-16 text-center text-sm text-surface-400 bg-white rounded-xl border border-surface-200">
+          Chưa có danh mục nào. Bấm “Thêm danh mục” để tạo danh mục đầu tiên.
+        </p>
+      )}
 
       <div className="flex flex-col gap-2">
         {sorted.map((cat, i) => (
@@ -91,7 +116,7 @@ export function AdminCategoriesClient() {
               <div className="flex items-center gap-2 flex-wrap mb-0.5">
                 <p className="font-semibold text-sm text-surface-800">{cat.name}</p>
                 {!cat.visible && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-100 text-surface-500">Ẩn</span>}
-                <span className="text-[10px] text-surface-400 bg-surface-50 px-2 py-0.5 rounded-full">{cat.productCount} sp</span>
+                <span className="text-[10px] text-surface-400 bg-surface-50 px-2 py-0.5 rounded-full">{cat.count} sp</span>
               </div>
               {cat.description && <p className="text-xs text-surface-500 truncate hidden sm:block">{cat.description}</p>}
 
@@ -102,8 +127,8 @@ export function AdminCategoriesClient() {
             </div>
             <div className="flex items-center gap-1 pl-2 border-l border-surface-100 shrink-0">
               <button onClick={() => open("edit", cat)} className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa"><Edit2 size={14} /></button>
-              <button onClick={() => toggle(cat.id)} className="p-2 rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 transition-all">{cat.visible ? "Ẩn" : "Hiện"}</button>
-              <button onClick={() => del(cat.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa"><Trash2 size={14} /></button>
+              <button onClick={() => toggle(cat)} className="p-2 rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 transition-all">{cat.visible ? "Ẩn" : "Hiện"}</button>
+              <button onClick={() => del(cat)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa"><Trash2 size={14} /></button>
             </div>
           </div>
         ))}
@@ -131,7 +156,7 @@ export function AdminCategoriesClient() {
                   className="w-full rounded-xl border border-surface-200 px-4 py-3 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100 transition-all resize-none" />
               </div>
               <div className="flex gap-3 pt-1">
-                <Button variant="primary" className="flex-1" onClick={save}>{mode === "add" ? "Thêm danh mục" : "Lưu thay đổi"}</Button>
+                <Button variant="primary" className="flex-1" onClick={save} loading={busy} disabled={busy}>{mode === "add" ? "Thêm danh mục" : "Lưu thay đổi"}</Button>
                 <Button variant="outline" onClick={() => setMode(null)}>Hủy</Button>
               </div>
             </div>

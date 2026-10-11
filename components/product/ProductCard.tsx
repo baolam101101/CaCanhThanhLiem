@@ -3,15 +3,14 @@
 import React from "react";
 import Link from "next/link";
 import { Phone, ImageIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, getPrimaryImageUrl } from "@/lib/utils";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
   const isOut = product.status === "out_of_stock";
-  // Ready for real images: when product.primaryImageUrl (or similar
-  // Supabase-backed field) exists, render it; otherwise show a
-  // neutral image-placeholder icon — never the product name/initial.
-  const imageUrl = (product as { primaryImageUrl?: string }).primaryImageUrl;
+  // Primary photo from product_media; a neutral placeholder icon when the
+  // product has no photo yet — never the product name/initial.
+  const imageUrl = getPrimaryImageUrl(product);
 
   return (
     <Link

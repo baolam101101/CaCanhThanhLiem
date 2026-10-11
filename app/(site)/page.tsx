@@ -4,33 +4,11 @@ import { ArrowRight, ShieldCheck, Truck, MessageCircle } from "lucide-react";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { HeroBannerSlider } from "@/components/sections/HeroBannerSlider";
 import type { SlideData } from "@/components/sections/HeroBannerSlider";
-
-// Mock banner slides — the farm's own signboard leads, then stock images
-// standing in until Supabase is connected (Issue #14).
-const MOCK_SLIDES: SlideData[] = [
-  {
-    id: "slide1",
-    imageDataUrl: "/images/banner-sign.jpg",
-    objectPositionX: 50, objectPositionY: 50, zoom: 1,
-    // The signboard has to stay readable end to end, so show it whole on
-    // its own green (#A8CF36, sampled from the artwork) instead of cropping.
-    fit: "contain", background: "#A8CF36",
-  },
-  {
-    id: "slide2",
-    imageDataUrl: "https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=1600&h=900&fit=crop",
-    objectPositionX: 50, objectPositionY: 35, zoom: 1.2,
-  },
-  {
-    id: "slide3",
-    imageDataUrl: "https://images.unsplash.com/photo-1524704796725-9fc3044a58b2?w=1600&h=900&fit=crop",
-    objectPositionX: 50, objectPositionY: 50, zoom: 1,
-  },
-];
 import { VideoShowcase } from "@/components/sections/VideoShowcase";
 import { ProductCard } from "@/components/product/ProductCard";
 import { CategoryGrid } from "@/components/sections/CategoryGrid";
-import { MOCK_CATEGORIES, getFeaturedProducts } from "@/lib/data";
+import { getBanners, getCategories, getFeaturedProducts, getSiteVideos } from "@/lib/data";
+import type { Category, Product, SiteVideo } from "@/types";
 import { SITE_CONFIG } from "@/lib/constants";
 
 export const metadata: Metadata = {
@@ -39,10 +17,10 @@ export const metadata: Metadata = {
 };
 
 /* ── Hero ── */
-function HeroSection() {
+function HeroSection({ slides }: { slides: SlideData[] }) {
   return (
     <section aria-labelledby="hero-heading">
-      <HeroBannerSlider slides={MOCK_SLIDES} />
+      <HeroBannerSlider slides={slides} />
 
       {/* Nature intro text — below slider */}
       <div className="py-5 md:py-8 px-4" style={{ background: "linear-gradient(160deg,#f6fbea,#ffffff)" }}>
@@ -85,7 +63,8 @@ function TrustStrip() {
 }
 
 /* ── Video ── */
-function VideoSection() {
+function VideoSection({ videos }: { videos: SiteVideo[] }) {
+  if (videos.length === 0) return null;
   return (
     <section className="section-pad bg-surface-50">
       <div className="container-site">
@@ -95,14 +74,15 @@ function VideoSection() {
           description="Cá Cảnh thuần dưỡng kỹ càng - cập nhật thường xuyên từ Trang Trại."
           className="mb-8 md:mb-10"
         />
-        <VideoShowcase />
+        <VideoShowcase videos={videos} />
       </div>
     </section>
   );
 }
 
 /* ── Categories ── */
-function CategoriesSection() {
+function CategoriesSection({ categories }: { categories: Category[] }) {
+  if (categories.length === 0) return null;
   return (
     <section className="section-pad bg-white">
       <div className="container-site">
@@ -112,15 +92,15 @@ function CategoriesSection() {
           description="Cá Koi Nhật, cá nhiệt đới, cá la hán và nhiều loài quý hiếm khác."
           className="mb-8 md:mb-10"
         />
-        <CategoryGrid categories={[...MOCK_CATEGORIES]} />
+        <CategoryGrid categories={categories} />
       </div>
     </section>
   );
 }
 
 /* ── Featured ── */
-function FeaturedSection() {
-  const featured = getFeaturedProducts(4);
+function FeaturedSection({ featured }: { featured: Product[] }) {
+  if (featured.length === 0) return null;
   return (
     <section className="section-pad bg-surface-50">
       <div className="container-site">
@@ -203,14 +183,21 @@ function CTABanner() {
   );
 }
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [slides, videos, categories, featured] = await Promise.all([
+    getBanners(),
+    getSiteVideos(),
+    getCategories(),
+    getFeaturedProducts(4),
+  ]);
+
   return (
     <>
-      <HeroSection />
+      <HeroSection slides={slides} />
       <TrustStrip />
-      <VideoSection />
-      <CategoriesSection />
-      <FeaturedSection />
+      <VideoSection videos={videos} />
+      <CategoriesSection categories={categories} />
+      <FeaturedSection featured={featured} />
       <WhyUsSection />
       <CTABanner />
     </>

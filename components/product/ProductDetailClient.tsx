@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Phone, MessageCircle, ImageIcon } from "lucide-react";
+import { Phone, MessageCircle, ImageIcon, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SITE_CONFIG } from "@/lib/constants";
 import type { Product } from "@/types";
@@ -10,63 +10,68 @@ import type { Product } from "@/types";
 export function ProductDetailClient({ product }: { product: Product }) {
   const isOut = product.status === "out_of_stock";
 
-  // Ready for real Supabase-backed image arrays. Until then we render
-  // a fixed set of neutral placeholder slots (not numbers,
-  // not the product name) that visually resemble real photo thumbnails.
-  const images = (product as { images?: string[] }).images ?? [];
-  const slotCount = 4;
+  // Photos and videos from product_media, primary first.
+  const media = product.media ?? [];
   const [activeIdx, setActiveIdx] = useState(0);
-  const activeImage = images[activeIdx];
+  const active = media[activeIdx];
+
+  // Short, readable product code: UUIDs are cut to 8 characters.
+  const productCode = product.id.length > 8 ? product.id.slice(0, 8).toUpperCase() : product.id.padStart(4, "0");
 
   return (
     <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
-      {/* Left: Image gallery */}
+      {/* Left: Media gallery */}
       <div>
         <div className="relative aspect-square rounded-3xl overflow-hidden shadow-lifted mb-4"
           style={{ background: "linear-gradient(135deg,#f4f9e8,#deeeb8)" }}>
-          {activeImage ? (
-            <img src={activeImage} alt={product.name} className="absolute inset-0 w-full h-full object-cover" />
+          {active?.type === "video" ? (
+            <video key={active.id} src={active.url} controls playsInline preload="metadata"
+              className="absolute inset-0 w-full h-full object-contain bg-black" />
+          ) : active ? (
+            <img src={active.url} alt={active.alt || product.name} className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <ImageIcon size={56} className="text-brand-300" aria-hidden />
             </div>
           )}
-          {isOut && (
-            <div className="absolute inset-0 bg-surface-800/20 flex items-center justify-center">
+          {isOut && active?.type !== "video" && (
+            <div className="absolute inset-0 bg-surface-800/20 flex items-center justify-center pointer-events-none">
               <span className="bg-surface-800 text-white px-4 py-2 rounded-full text-sm font-semibold">Tạm hết hàng</span>
             </div>
           )}
         </div>
 
-        {/* Thumbnails — realistic photo-style placeholders, no numbers/ */}
-        <div className="flex gap-3">
-          {Array.from({ length: slotCount }).map((_, i) => {
-            const thumbUrl = images[i];
-            const isActive = i === activeIdx;
-            return (
-              <button
-                key={i}
-                onClick={() => setActiveIdx(i)}
-                aria-label={`Xem ảnh ${i + 1}`}
-                className={cn(
-                  "relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0",
-                  isActive ? "border-brand-400" : "border-surface-200 opacity-60 hover:opacity-100 hover:border-brand-300"
-                )}
-              >
-                {thumbUrl ? (
-                  <img src={thumbUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                ) : (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg,#f4f9e8,#deeeb8)" }}
-                  >
-                    <ImageIcon size={16} className="text-brand-300" aria-hidden />
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {media.length > 1 && (
+          <div className="flex gap-3 flex-wrap">
+            {media.map((m, i) => {
+              const isActive = i === activeIdx;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setActiveIdx(i)}
+                  aria-label={m.type === "video" ? `Xem video ${i + 1}` : `Xem ảnh ${i + 1}`}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "relative w-14 h-14 rounded-xl overflow-hidden border-2 transition-all shrink-0 bg-surface-100",
+                    isActive ? "border-brand-400" : "border-surface-200 opacity-60 hover:opacity-100 hover:border-brand-300"
+                  )}
+                >
+                  {m.type === "video" ? (
+                    <>
+                      <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline
+                        className="absolute inset-0 w-full h-full object-cover" aria-hidden />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <Play size={16} className="text-white" aria-hidden />
+                      </span>
+                    </>
+                  ) : (
+                    <img src={m.url} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Right: Info */}
@@ -77,7 +82,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
             {product.category}
           </Link>
           {product.tags.includes("new")      && <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: "#739620" }}>Mới về</span>}
-          {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white bg-orange-500">Nổi bật</span>}
+          {product.tags.includes("featured") && <span className="px-2.5 py-1 rounded-full text-xs font-bold text-white bg-orange-500">⭐ Nổi bật</span>}
         </div>
 
         {/* Name */}
@@ -92,7 +97,7 @@ export function ProductDetailClient({ product }: { product: Product }) {
               {isOut ? "Tạm hết hàng" : "Còn hàng"}
             </span>
             <span className="text-surface-300">·</span>
-            <span className="text-sm text-surface-400">Mã SP: {product.id.padStart(4,"0")}</span>
+            <span className="text-sm text-surface-400">Mã SP: {productCode}</span>
           </div>
         </div>
 

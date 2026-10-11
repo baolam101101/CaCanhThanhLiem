@@ -13,15 +13,9 @@ create type product_tag as enum ('featured', 'new');
 -- types/index.ts: OrderStatus = "pending" | "contacted" | "completed" | "cancelled"
 create type order_status as enum ('pending', 'contacted', 'completed', 'cancelled');
 
--- types/index.ts: CategorySlug closed union
-create type category_slug as enum (
-  'ca-bien',
-  'ca-dia',
-  'ca-la-han',
-  'ca-nhiet-doi',
-  'ca-rong',
-  'phu-kien'
-);
+-- Category slugs are NOT an enum: categories are created from the admin
+-- panel, so the set of slugs is open. categories.slug is plain text with a
+-- format check (0003).
 
 -- types/index.ts: ProductSpec.careLevel union (Vietnamese labels)
 create type care_level as enum (

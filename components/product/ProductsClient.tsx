@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./ProductCard";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { useSearchParams } from "next/navigation";
 import type { Product, Category } from "@/types";
 
 interface ProductsClientProps {
@@ -23,7 +24,12 @@ type StatusFilter = (typeof STATUS_FILTERS)[number]["key"];
 
 export function ProductsClient({ initialProducts, categories }: ProductsClientProps) {
   const [search, setSearch]               = useState("");
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  // Category links elsewhere on the site point at /products?category=<slug>.
+  const searchParams = useSearchParams();
+  const [activeCategory, setActiveCategory] = useState<string | null>(() => {
+    const slug = searchParams.get("category");
+    return slug && categories.some((c) => c.slug === slug) ? slug : null;
+  });
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>("all");
 
   const filtered = useMemo(() => {
@@ -37,7 +43,7 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
         const q = search.toLowerCase();
         return (
           p.name.toLowerCase().includes(q) ||
-          p.latin.toLowerCase().includes(q) ||
+          (p.latin ?? "").toLowerCase().includes(q) ||
           p.category.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q)
         );

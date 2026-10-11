@@ -13,10 +13,11 @@ const CONTACT_METHODS = [
   {
     icon: <MapPin size={20} />,
     title: "Cửa hàng",
+    valueLabel: "Địa chỉ mới: ",
     value: SITE_CONFIG.newAddress,
+    oldValueLabel: "Địa chỉ cũ: ",
     oldValue: SITE_CONFIG.address,
     note: "Mở cửa 7:30 - 17:30, tất cả các ngày",
-    external: true,
   },
   {
     icon: <Phone size={20} />,
@@ -98,11 +99,13 @@ export default function ContactPage() {
                             {method.value}
                           </a>
                         ) : (
-                          <p className="text-surface-800 font-semibold text-base">Địa chỉ mới: {method.value}</p>
+                          <p className="text-surface-800 font-semibold text-base">
+                            {"valueLabel" in method ? method.valueLabel : ""}{method.value}
+                          </p>
                         )}
                         {"oldValue" in method && method.oldValue && (
                           <p className="text-surface-800 font-semibold text-base mt-1">
-                            Địa chỉ cũ: {method.oldValue}
+                            {"oldValueLabel" in method ? method.oldValueLabel : ""}{method.oldValue}
                           </p>
                         )}
                         {method.note && (
