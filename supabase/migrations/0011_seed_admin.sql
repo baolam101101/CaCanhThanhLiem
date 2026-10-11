@@ -8,14 +8,16 @@
 --
 -- The login route (app/api/admin/login/route.ts) maps a bare username to
 -- "<username>@cacanhthanhliem.internal" and reads role / display_name from
--- the Supabase user_metadata — so those are written here to match.
+-- public.admin_users (step 3).
 --
--- Idempotent: safe to re-run. Nothing happens if the user already exists.
+-- Idempotent: safe to re-run. An existing admin keeps its password; only
+-- the repairs in step 2 are applied to it.
 --
 -- NOTE: this writes directly into auth.users / auth.identities. The column
 -- set below matches Supabase's GoTrue schema (identities.provider_id is
--- required on releases from 2024 onward). Alternatively the same user can be
--- created via the Auth Admin API; either path satisfies the login flow.
+-- required on releases from 2024 onward). GoTrue reads the token columns
+-- into plain strings, so they must be '' rather than NULL — a NULL there
+-- makes every sign-in for the user fail ("Database error querying schema").
 -- ============================================================
 
 do $$
@@ -36,7 +38,15 @@ begin
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
-      updated_at
+      updated_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
+      email_change_token_current,
+      phone_change,
+      phone_change_token,
+      reauthentication_token
     ) values (
       '00000000-0000-0000-0000-000000000000',
       v_user_id,
@@ -48,10 +58,11 @@ begin
       '{"provider":"email","providers":["email"]}'::jsonb,
       '{"role":"superadmin","display_name":"Quản trị viên"}'::jsonb,
       now(),
-      now()
+      now(),
+      '', '', '', '', '', '', '', ''
     );
 
-    -- 2. auth.identities (email provider)
+    -- auth.identities (email provider)
     insert into auth.identities (
       id,
       user_id,
@@ -65,13 +76,27 @@ begin
       gen_random_uuid(),
       v_user_id,
       v_user_id::text,
-      jsonb_build_object('sub', v_user_id::text, 'email', v_email),
+      jsonb_build_object('sub', v_user_id::text, 'email', v_email, 'email_verified', true),
       'email',
       now(),
       now(),
       now()
     );
   end if;
+
+  -- 2. Repair an admin seeded by an earlier version of this file, which
+  --    left the token columns NULL and so could never sign in.
+  update auth.users set
+    email_confirmed_at         = coalesce(email_confirmed_at, now()),
+    confirmation_token         = coalesce(confirmation_token, ''),
+    recovery_token             = coalesce(recovery_token, ''),
+    email_change_token_new     = coalesce(email_change_token_new, ''),
+    email_change               = coalesce(email_change, ''),
+    email_change_token_current = coalesce(email_change_token_current, ''),
+    phone_change               = coalesce(phone_change, ''),
+    phone_change_token         = coalesce(phone_change_token, ''),
+    reauthentication_token     = coalesce(reauthentication_token, '')
+  where id = v_user_id;
 
   -- 3. admin_users profile row
   insert into admin_users (id, username, display_name, role, active)

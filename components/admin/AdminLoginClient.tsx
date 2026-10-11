@@ -78,9 +78,12 @@ export function AdminLoginClient() {
             }
           </button>
         </form>
-        <p className="text-xs text-surface-400 text-center mt-8">
-          Mặc định: <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">admin</code> / <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">TL@Admin2025</code>
-        </p>
+        {/* Local development only: never show the default password on the live site. */}
+        {process.env.NODE_ENV !== "production" && (
+          <p className="text-xs text-surface-400 text-center mt-8">
+            Mặc định: <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">admin</code> / <code className="font-mono bg-surface-100 px-1.5 py-0.5 rounded text-surface-500">TL@Admin2025</code>
+          </p>
+        )}
       </div>
     </div>
   );
