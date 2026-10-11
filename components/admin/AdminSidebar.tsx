@@ -147,7 +147,10 @@ export function AdminSidebar({ role, displayName, collapsed, onToggleCollapse }:
 
       {/* Footer */}
       <div className={cn("border-t border-white/10 py-3 shrink-0 flex flex-col gap-0.5", collapsed ? "px-2" : "px-3")}>
-        <Link
+        {/* Plain <a>, not <Link>: a full page load, so the site shows what
+            the admin just saved instead of the router's cached copy. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a
           href="/"
           title={collapsed ? "Xem trang web" : undefined}
           className={cn(
@@ -163,7 +166,7 @@ export function AdminSidebar({ role, displayName, collapsed, onToggleCollapse }:
               <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-surface-800" />
             </div>
           )}
-        </Link>
+        </a>
         <button
           onClick={() => setShowLogoutDlg(true)}
           title={collapsed ? "Đăng xuất" : undefined}
@@ -283,10 +286,12 @@ export function AdminSidebar({ role, displayName, collapsed, onToggleCollapse }:
           </div>
         </nav>
         <div className="px-3 py-3 border-t border-white/10 flex flex-col gap-0.5 shrink-0">
-          <Link href="/" onClick={() => setMobileOpen(false)}
+          {/* Full page load, as in the desktop sidebar. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/" onClick={() => setMobileOpen(false)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/40 hover:text-white hover:bg-white/8 transition-all">
             <Globe size={16} aria-hidden /> <span className="truncate">Xem trang web</span>
-          </Link>
+          </a>
           <button onClick={() => setShowLogoutDlg(true)}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all w-full">
             <LogOut size={15} aria-hidden /> Đăng xuất
