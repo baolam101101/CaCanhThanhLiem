@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         from: process.env.RESEND_FROM || "Cá Cảnh Thanh Liêm <onboarding@resend.dev>",
         to: to.split(",").map((s) => s.trim()).filter(Boolean),
-        subject: `[Website] ${subject} — ${name}`,
+        subject: `[Website] ${subject}`,
         text,
         html,
       }),
