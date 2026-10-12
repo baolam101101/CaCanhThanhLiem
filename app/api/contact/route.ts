@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { SITE_CONFIG } from "@/lib/constants";
+import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 
 // ============================================================
 // POST /api/contact — sends the contact form to the shop's inbox.
@@ -14,20 +15,8 @@ import { SITE_CONFIG } from "@/lib/constants";
 
 const SUBJECTS = ["Hỏi về cá Koi", "Yêu cầu báo giá", "Tư vấn hồ cá", "Hỏi về phụ kiện", "Khiếu nại / Góp ý", "Khác"];
 
-// Light per-instance throttle against form spam: 5 messages / 10 min / IP.
-// Serverless instances don't share memory, so this is a speed bump, not a wall.
-const WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 5;
-const hits = new Map<string, number[]>();
-
-function throttled(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 5000) hits.clear();
-  return recent.length > MAX_PER_WINDOW;
-}
+// Light throttle against form spam: 5 messages / 10 min / IP (see lib/rate-limit).
+const limiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5 });
 
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -54,10 +43,11 @@ export async function POST(req: Request) {
   }
   if (!message) return NextResponse.json({ error: "Vui lòng nhập nội dung" }, { status: 400 });
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (throttled(ip)) {
+  const ip = clientIp(req);
+  if (limiter.limited(ip)) {
     return NextResponse.json({ error: "Bạn đã gửi quá nhiều tin nhắn, vui lòng thử lại sau ít phút" }, { status: 429 });
   }
+  limiter.hit(ip);
 
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.CONTACT_TO_EMAIL;

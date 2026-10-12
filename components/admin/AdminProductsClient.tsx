@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from "react";
-import { Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload, Video, ImageIcon } from "lucide-react";
+import { Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload, Video, ImageIcon, Loader2 } from "lucide-react";
 import { cn, getPrimaryImageUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -10,6 +10,7 @@ import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
 import { adminApi, uploadMedia } from "@/lib/admin/client";
 import { checkFileForBucket } from "@/lib/admin/media";
+import { useBusy } from "@/lib/hooks/use-busy";
 import type { Category, Product, ProductStatus } from "@/types";
 
 // A photo/video in the form. New files stay local (blob: preview) until
@@ -243,7 +244,8 @@ function ProductModal({ mode, product, categories, onSave, onClose }: {
       key: m.id, id: m.id, type: m.type, url: m.url, name: m.alt || (m.type === "video" ? "Video" : "Ảnh"),
     })),
   });
-  const [saving, setSaving]     = useState(false);
+  const { run, isBusy } = useBusy();
+  const saving = isBusy("save");
   const [progress, setProgress] = useState("");
   const [error, setError]       = useState("");
 
@@ -252,19 +254,24 @@ function ProductModal({ mode, product, categories, onSave, onClose }: {
   const submit = async () => {
     if (!form.name.trim()) { setError("Vui lòng nhập tên sản phẩm"); return; }
     if (!form.categorySlug) { setError("Vui lòng chọn danh mục"); return; }
-    setSaving(true); setError(""); setProgress("");
-    try {
-      await onSave(form, setProgress);
-    } catch (e) {
-      setError((e as Error).message);
-      setSaving(false); setProgress("");
-    }
+    setError(""); setProgress("");
+    const done = await run("save", async () => {
+      try {
+        await onSave(form, setProgress);
+        return true;
+      } catch (e) {
+        setError((e as Error).message);
+        setProgress("");
+        return false;
+      }
+    });
+    if (done) onClose();
   };
 
   return (
     <div
       className="fixed inset-0 bg-black/55 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onClick={(e) => e.target === e.currentTarget && !saving && onClose()}
     >
       <div className="bg-white w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl shadow-modal max-h-[96vh] overflow-y-auto animate-slide-up sm:animate-fade-in">
         {/* Header */}
@@ -272,7 +279,7 @@ function ProductModal({ mode, product, categories, onSave, onClose }: {
           <h2 className="font-display font-semibold text-lg text-surface-800">
             {mode === "add" ? "Thêm sản phẩm" : "Chỉnh sửa sản phẩm"}
           </h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-100 transition-colors">
+          <button onClick={onClose} disabled={saving} className="p-2 rounded-xl hover:bg-surface-100 transition-colors">
             <X size={18} aria-hidden />
           </button>
         </div>
@@ -393,7 +400,7 @@ function ProductModal({ mode, product, categories, onSave, onClose }: {
           {progress && <p className="text-xs text-brand-600 animate-pulse" aria-live="polite">{progress}</p>}
 
           <div className="flex gap-3 pt-1">
-            <Button variant="primary" className="flex-1" onClick={submit} loading={saving} disabled={saving}>
+            <Button variant="primary" className="flex-1" onClick={submit} loading={saving}>
               {mode === "add" ? "Thêm sản phẩm" : "Lưu thay đổi"}
             </Button>
             <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
@@ -415,6 +422,7 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [editing,   setEditing]   = useState<Product | null>(null);
   const [toast,     setToast]     = useState<string | null>(null);
+  const { run, isBusy } = useBusy();
 
   const msg = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
@@ -431,7 +439,7 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
     setProducts(fresh);
   };
 
-  const toggleStatus = async (p: Product) => {
+  const toggleStatus = (p: Product) => run(`row:${p.id}`, async () => {
     const next: ProductStatus = p.status === "hidden" ? "available" : "hidden";
     setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: next } : x)));
     try {
@@ -441,18 +449,21 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
       setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: p.status } : x)));
       msg((e as Error).message);
     }
-  };
+  });
 
-  const deleteProduct = async (p: Product) => {
+  const deleteProduct = (p: Product) => {
     if (!confirm(`Xóa "${p.name}"? Ảnh và video của sản phẩm cũng sẽ bị xóa.`)) return;
-    try {
-      await adminApi(`/api/admin/products/${p.id}`, { method: "DELETE" });
-      setProducts((prev) => prev.filter((x) => x.id !== p.id));
-      msg(`Đã xóa "${p.name}"`);
-    } catch (e) { msg((e as Error).message); }
+    return run(`row:${p.id}`, async () => {
+      try {
+        await adminApi(`/api/admin/products/${p.id}`, { method: "DELETE" });
+        setProducts((prev) => prev.filter((x) => x.id !== p.id));
+        msg(`Đã xóa "${p.name}"`);
+      } catch (e) { msg((e as Error).message); }
+    });
   };
 
   // Upload new files first (straight to Storage), then save the product.
+  // The modal closes itself once this resolves.
   const handleSave = async (data: ProductFormData, progress: (text: string) => void) => {
     const pending = data.media.filter((m) => m.file);
     const media: { id?: string; type: "image" | "video"; url: string; storagePath?: string }[] = [];
@@ -485,7 +496,6 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
     }
     data.media.forEach((m) => m.file && URL.revokeObjectURL(m.url));
     await reload();
-    setModalMode(null); setEditing(null);
   };
 
   const sLabel   = (s: ProductStatus) => s === "available" ? "Còn hàng" : s === "out_of_stock" ? "Hết hàng" : "Ẩn";
@@ -530,7 +540,9 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p, i) => (
+              {filtered.map((p, i) => {
+                const rowBusy = isBusy(`row:${p.id}`);
+                return (
                 <tr key={p.id} className={cn("hover:bg-surface-50 transition-colors", i < filtered.length - 1 && "border-b border-surface-100")}>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
@@ -556,19 +568,21 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
                         className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa">
                         <Edit2 size={14} aria-hidden />
                       </button>
-                      <button onClick={() => toggleStatus(p)}
-                        className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+                      <button onClick={() => toggleStatus(p)} disabled={rowBusy}
+                        className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all"
                         title={p.status === "hidden" ? "Hiện" : "Ẩn"}>
-                        {p.status === "hidden" ? <Eye size={14} aria-hidden /> : <EyeOff size={14} aria-hidden />}
+                        {rowBusy ? <Loader2 size={14} className="animate-spin" aria-label="Đang xử lý" />
+                          : p.status === "hidden" ? <Eye size={14} aria-hidden /> : <EyeOff size={14} aria-hidden />}
                       </button>
-                      <button onClick={() => deleteProduct(p)}
-                        className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa">
+                      <button onClick={() => deleteProduct(p)} disabled={rowBusy}
+                        className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa">
                         <Trash2 size={14} aria-hidden />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={5} className="px-4 py-16 text-center text-sm text-surface-400">{products.length === 0 ? "Chưa có sản phẩm nào" : "Không tìm thấy sản phẩm"}</td></tr>
               )}

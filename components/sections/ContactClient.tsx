@@ -4,6 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { useBusy } from "@/lib/hooks/use-busy";
 import type { ContactFormData, FormState } from "@/types";
 
 const SUBJECTS = ["Hỏi về cá Koi","Yêu cầu báo giá","Tư vấn hồ cá","Hỏi về phụ kiện","Khiếu nại / Góp ý","Khác"];
@@ -15,6 +16,7 @@ export function ContactClient() {
   const [website, setWebsite]     = useState("");
   const [errors, setErrors]       = useState<Partial<ContactFormData>>({});
   const [formState, setFormState] = useState<FormState>({ status: "idle" });
+  const { run } = useBusy();
 
   const set = <K extends keyof ContactFormData>(f: K, v: ContactFormData[K]) => {
     setForm((p) => ({ ...p, [f]: v }));
@@ -35,21 +37,22 @@ export function ContactClient() {
     ev.preventDefault();
     if (!validate()) return;
     setFormState({ status: "loading" });
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, website }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setFormState({ status: "error", message: data.error ?? "Chưa gửi được tin nhắn, vui lòng thử lại" });
-        return;
+    const result = await run("send", async (): Promise<FormState> => {
+      try {
+        const res = await fetch("/api/contact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...form, website }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return { status: "error", message: data.error ?? "Chưa gửi được tin nhắn, vui lòng thử lại" };
+        return { status: "success" };
+      } catch {
+        return { status: "error", message: "Không kết nối được máy chủ, vui lòng kiểm tra mạng rồi thử lại" };
       }
-      setFormState({ status: "success" });
-    } catch {
-      setFormState({ status: "error", message: "Không kết nối được máy chủ, vui lòng kiểm tra mạng rồi thử lại" });
-    }
+    });
+    // undefined: a send was already in flight, which owns the form state.
+    if (result) setFormState(result);
   };
 
   if (formState.status === "success") return (

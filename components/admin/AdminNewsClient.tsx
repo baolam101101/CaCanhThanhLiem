@@ -3,10 +3,11 @@
 import React, { useState, useMemo, useRef } from "react";
 import {
   Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload,
-  Heading2, Pilcrow, List as ListIcon, ImageIcon, GripVertical, AlertCircle,
+  Heading2, Pilcrow, List as ListIcon, ImageIcon, GripVertical, AlertCircle, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { useBusy } from "@/lib/hooks/use-busy";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -201,7 +202,8 @@ function NewsModal({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingFeatured, setUploadingFeatured] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { run, isBusy } = useBusy();
+  const saving = isBusy("save");
   const [error, setError] = useState("");
   const [form, setForm] = useState<NewsFormData>({
     title:               article?.title               ?? "",
@@ -248,24 +250,28 @@ function NewsModal({
     if (checkDuplicateTitle(form.title)) { setTitleError("Tiêu đề này đã tồn tại — vui lòng chọn tiêu đề khác"); return; }
     if (!form.featuredImage) { setError("Vui lòng chọn ảnh đại diện"); return; }
     if (!form.excerpt.trim()) { setError("Vui lòng nhập mô tả ngắn"); return; }
-    setSaving(true); setError("");
-    try {
-      await onSave(form);
-    } catch (e) {
-      setError((e as Error).message);
-      setSaving(false);
-    }
+    setError("");
+    const done = await run("save", async () => {
+      try {
+        await onSave(form);
+        return true;
+      } catch (e) {
+        setError((e as Error).message);
+        return false;
+      }
+    });
+    if (done) onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black/55 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      onClick={(e) => e.target === e.currentTarget && !saving && onClose()}>
       <div className="bg-white w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl shadow-modal max-h-[96vh] overflow-y-auto animate-slide-up sm:animate-fade-in">
         <div className="sticky top-0 bg-white border-b border-surface-100 flex items-center justify-between px-6 py-4 z-10">
           <h2 className="font-display font-semibold text-lg text-surface-800">
             {mode === "add" ? "Thêm tin tức" : "Chỉnh sửa tin tức"}
           </h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-surface-100 transition-colors"><X size={18} aria-hidden /></button>
+          <button onClick={onClose} disabled={saving} className="p-2 rounded-xl hover:bg-surface-100 transition-colors"><X size={18} aria-hidden /></button>
         </div>
 
         <div className="p-5 flex flex-col gap-5">
@@ -359,7 +365,7 @@ function NewsModal({
           </label>
 
           <div className="flex gap-3 pt-1">
-            <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={saving || uploadingFeatured}>
+            <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={uploadingFeatured}>
               {mode === "add" ? "Thêm tin tức" : "Lưu thay đổi"}
             </Button>
             <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
@@ -385,6 +391,7 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
   const [editing,   setEditing]   = useState<NewsArticle | null>(null);
   const [previewing,setPreviewing]= useState<NewsArticle | null>(null);
   const [toast,     setToast]     = useState<string | null>(null);
+  const { run, isBusy } = useBusy();
 
   const msg = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
 
@@ -400,7 +407,7 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
     setNews(fresh.map((n) => ({ ...n, createdAt: new Date(n.createdAt), updatedAt: new Date(n.updatedAt) })));
   };
 
-  const toggleVisible = async (id: string) => {
+  const toggleVisible = (id: string) => run(`row:${id}`, async () => {
     const n = news.find((x) => x.id === id);
     if (!n) return;
     const published = !n.published;
@@ -412,16 +419,18 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
       setNews((prev) => prev.map((x) => (x.id === id ? { ...x, published: !published } : x)));
       msg((e as Error).message);
     }
-  };
+  });
 
-  const deleteNews = async (id: string) => {
+  const deleteNews = (id: string) => {
     const n = news.find((x) => x.id === id);
     if (!n || !confirm(`Xóa tin tức "${n.title}"?`)) return;
-    try {
-      await adminApi(`/api/admin/news/${id}`, { method: "DELETE" });
-      setNews((prev) => prev.filter((x) => x.id !== id));
-      msg(`Đã xóa "${n.title}"`);
-    } catch (e) { msg((e as Error).message); }
+    return run(`row:${id}`, async () => {
+      try {
+        await adminApi(`/api/admin/news/${id}`, { method: "DELETE" });
+        setNews((prev) => prev.filter((x) => x.id !== id));
+        msg(`Đã xóa "${n.title}"`);
+      } catch (e) { msg((e as Error).message); }
+    });
   };
 
   const handleSave = async (data: NewsFormData) => {
@@ -433,7 +442,6 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
       msg(`Đã cập nhật "${data.title}"`);
     }
     await reload();
-    setModalMode(null); setEditing(null);
   };
 
   return (
@@ -458,7 +466,9 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
       </div>
 
       <div className="flex flex-col gap-2.5">
-        {filtered.map((n) => (
+        {filtered.map((n) => {
+          const rowBusy = isBusy(`row:${n.id}`);
+          return (
           <div key={n.id} className={cn("bg-white rounded-xl border border-surface-200 shadow-card flex items-center gap-3 px-4 py-3 transition-opacity", !n.published && "opacity-55")}>
             <button onClick={() => setPreviewing(n)} className="relative shrink-0 rounded-lg overflow-hidden w-16 h-12 hover:ring-2 hover:ring-brand-300 transition-all" aria-label="Xem ảnh lớn">
               <img src={n.featuredImage} alt="" style={computeCroppedImageStyle(n.featuredImagePosX ?? 50, n.featuredImagePosY ?? 50, n.featuredImageZoom ?? 1)} />
@@ -475,18 +485,20 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
                 className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa">
                 <Edit2 size={14} aria-hidden />
               </button>
-              <button onClick={() => toggleVisible(n.id)}
-                className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+              <button onClick={() => toggleVisible(n.id)} disabled={rowBusy}
+                className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all"
                 title={n.published ? "Ẩn" : "Hiện"}>
-                {n.published ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
+                {rowBusy ? <Loader2 size={14} className="animate-spin" aria-label="Đang xử lý" />
+                  : n.published ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
               </button>
-              <button onClick={() => deleteNews(n.id)}
-                className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa">
+              <button onClick={() => deleteNews(n.id)} disabled={rowBusy}
+                className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa">
                 <Trash2 size={14} aria-hidden />
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <div className="text-center py-16 text-surface-400">
             <p className="text-sm">Không tìm thấy tin tức</p>

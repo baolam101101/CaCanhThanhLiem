@@ -3,6 +3,7 @@ import { findByUsername, verifyPassword } from "@/lib/auth/accounts";
 import { createSession, SESSION_COOKIE, MAX_AGE, SESSION_SECRET_CONFIGURED } from "@/lib/auth/session";
 import { SUPABASE_ENABLED, getSupabaseServerClient, getSupabaseAdminClient } from "@/lib/supabase";
 import { getAdminProfile, usernameToEmail } from "@/lib/auth/admin-accounts";
+import { clientIp, createRateLimiter } from "@/lib/rate-limit";
 
 function issue(session: { id: string; username: string; displayName: string; role: "superadmin" | "staff" }) {
   return createSession(session).then((token) => {
@@ -20,7 +21,21 @@ function issue(session: { id: string; username: string; displayName: string; rol
 
 const WRONG = () => NextResponse.json({ error: "Tên đăng nhập hoặc mật khẩu không đúng" }, { status: 401 });
 
+// Password guessing: 10 failed sign-ins / 15 min / IP. Only failures count,
+// so an admin who signs in correctly is never slowed down.
+const failures = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10 });
+
 export async function POST(req: NextRequest) {
+  const ip = clientIp(req);
+  if (failures.limited(ip)) {
+    return NextResponse.json({ error: "Đăng nhập sai quá nhiều lần, vui lòng thử lại sau 15 phút" }, { status: 429 });
+  }
+  const res = await attempt(req);
+  if (res.status === 401) failures.hit(ip);
+  return res;
+}
+
+async function attempt(req: NextRequest): Promise<NextResponse> {
   try {
     if (!SESSION_SECRET_CONFIGURED) {
       return NextResponse.json({ error: "Máy chủ chưa cấu hình SESSION_SECRET, chưa thể đăng nhập" }, { status: 500 });
@@ -44,7 +59,24 @@ export async function POST(req: NextRequest) {
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
-      if (error || !data.user) return WRONG();
+      if (error) {
+        // Only a credentials rejection means "wrong password". Anything else
+        // (bad API key, broken auth.users row, Supabase down) is a setup
+        // problem that the admin cannot fix by retyping.
+        if (error.code === "invalid_credentials") return WRONG();
+        console.error("[login] Supabase Auth", error.status, error.code, error.message);
+        // auth-js drops the response body on 5xx, so there is no message to
+        // pass on. The usual 5xx is a user row written by SQL with NULL token
+        // columns, which 0011_seed_admin.sql repairs when re-run.
+        const detail = (error.status ?? 0) >= 500
+          ? "lỗi máy chủ. Chạy lại file 0011_seed_admin.sql trong Supabase SQL Editor rồi thử lại"
+          : error.message;
+        return NextResponse.json(
+          { error: `Supabase Auth báo lỗi (${error.code ?? error.status ?? "không rõ"}): ${detail}` },
+          { status: 502 },
+        );
+      }
+      if (!data.user) return WRONG();
 
       // Role and display name come from admin_users, which only the server
       // can write — not from user_metadata, which the user can edit.

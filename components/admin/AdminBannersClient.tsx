@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, Eye, EyeOff, X, ArrowUp, ArrowDown, Edit2, Upload } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, X, ArrowUp, ArrowDown, Edit2, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { ImageCropTool, computeCroppedImageStyle } from "@/components/admin/ImageCropTool";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
 import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { useBusy } from "@/lib/hooks/use-busy";
 import { checkFileForBucket } from "@/lib/admin/media";
 import type { AdminBanner } from "@/lib/admin/repo";
 
@@ -41,7 +42,8 @@ function BannerModal({ banner, onSave, onClose }: {
     objectPositionX: 50, objectPositionY: 50, zoom: 1,
     fit: "cover", background: DEFAULT_BACKGROUND,
   });
-  const [saving, setSaving] = useState(false);
+  const { run, isBusy } = useBusy();
+  const saving = isBusy("save");
   const [error, setError] = useState("");
   const upd = (p: Partial<BannerForm>) => setForm((f) => ({ ...f, ...p }));
 
@@ -55,13 +57,17 @@ function BannerModal({ banner, onSave, onClose }: {
 
   const save = async () => {
     if (!form.imageUrl) { setError("Vui lòng chọn ảnh banner"); return; }
-    setSaving(true); setError("");
-    try {
-      await onSave(form);
-    } catch (e) {
-      setError((e as Error).message);
-      setSaving(false);
-    }
+    setError("");
+    const done = await run("save", async () => {
+      try {
+        await onSave(form);
+        return true;
+      } catch (e) {
+        setError((e as Error).message);
+        return false;
+      }
+    });
+    if (done) onClose();
   };
 
   return (
@@ -134,7 +140,7 @@ function BannerModal({ banner, onSave, onClose }: {
             <span className="text-sm font-medium text-surface-700">Hiển thị banner này</span>
           </label>
           <div className="flex gap-3">
-            <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={saving}>{isNew ? "Thêm banner" : "Lưu thay đổi"}</Button>
+            <Button variant="primary" className="flex-1" onClick={save} loading={saving}>{isNew ? "Thêm banner" : "Lưu thay đổi"}</Button>
             <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
           </div>
         </div>
@@ -148,6 +154,8 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
   const [editTarget, setEditTarget] = useState<AdminBanner | null | "new">(null);
   const [previewing, setPreviewing] = useState<AdminBanner | null>(null);
   const [toast,      setToast]      = useState<string | null>(null);
+  const { run, isBusy } = useBusy();
+  const reordering = isBusy("reorder");
 
   const msg = (t: string) => { setToast(t); setTimeout(() => setToast(null), 3000); };
   const sorted = [...banners].sort((a, b) => a.order - b.order);
@@ -157,7 +165,7 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
     setBanners(fresh);
   };
 
-  const move = async (id: string, dir: "up" | "down") => {
+  const move = (id: string, dir: "up" | "down") => run("reorder", async () => {
     const arr = [...sorted];
     const i = arr.findIndex((b) => b.id === id), j = dir === "up" ? i - 1 : i + 1;
     if (j < 0 || j >= arr.length) return;
@@ -167,9 +175,9 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
     try {
       await adminApi("/api/admin/reorder", { method: "POST", body: { table: "banners", ids: arr.map((b) => b.id) } });
     } catch (e) { setBanners(previous); msg((e as Error).message); }
-  };
+  });
 
-  const toggleVisible = async (b: AdminBanner) => {
+  const toggleVisible = (b: AdminBanner) => run(`row:${b.id}`, async () => {
     const visible = !b.visible;
     setBanners((p) => p.map((x) => (x.id === b.id ? { ...x, visible } : x)));
     try {
@@ -179,15 +187,17 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
       setBanners((p) => p.map((x) => (x.id === b.id ? { ...x, visible: b.visible } : x)));
       msg((e as Error).message);
     }
-  };
+  });
 
-  const deleteBanner = async (id: string) => {
+  const deleteBanner = (id: string) => {
     if (!confirm("Xoá banner này?")) return;
-    try {
-      await adminApi(`/api/admin/banners/${id}`, { method: "DELETE" });
-      setBanners((p) => p.filter((b) => b.id !== id));
-      msg("Đã xoá banner");
-    } catch (e) { msg((e as Error).message); }
+    return run(`row:${id}`, async () => {
+      try {
+        await adminApi(`/api/admin/banners/${id}`, { method: "DELETE" });
+        setBanners((p) => p.filter((b) => b.id !== id));
+        msg("Đã xoá banner");
+      } catch (e) { msg((e as Error).message); }
+    });
   };
 
   const handleSave = async (form: BannerForm) => {
@@ -206,7 +216,7 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
     if (form.id) await adminApi(`/api/admin/banners/${form.id}`, { method: "PATCH", body });
     else await adminApi("/api/admin/banners", { method: "POST", body });
     await reload();
-    setEditTarget(null); msg("Đã lưu banner");
+    msg("Đã lưu banner");
   };
 
   return (
@@ -229,7 +239,9 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
         </div>
       ) : (
         <div className="flex flex-col gap-2.5">
-          {sorted.map((b, i) => (
+          {sorted.map((b, i) => {
+            const rowBusy = isBusy(`row:${b.id}`);
+            return (
             <div key={b.id} className={cn("bg-white rounded-xl border shadow-card flex items-center gap-3 px-4 py-3 transition-opacity", !b.visible && "opacity-55")}>
               <button onClick={() => setPreviewing(b)} className="shrink-0 rounded-lg overflow-hidden hover:ring-2 hover:ring-brand-300 transition-all" aria-label="Xem lớn">
                 <div className="relative overflow-hidden rounded-lg bg-surface-100" style={{ width: 80, height: 28 }}>
@@ -244,16 +256,19 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
                 <p className="text-sm font-medium text-surface-800 truncate">{b.imageName || "Ảnh banner"}</p>
               </div>
               <div className="flex flex-col gap-0.5 shrink-0">
-                <button onClick={() => move(b.id, "up")} disabled={i === 0} aria-label="Lên trên" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
-                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1} aria-label="Xuống dưới" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
+                <button onClick={() => move(b.id, "up")} disabled={i === 0 || reordering} aria-label="Lên trên" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
+                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1 || reordering} aria-label="Xuống dưới" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
               </div>
               <div className="flex items-center gap-1 border-l border-surface-100 pl-2 shrink-0">
                 <button onClick={() => setEditTarget(b)} aria-label="Sửa" className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Edit2 size={14} /></button>
-                <button onClick={() => toggleVisible(b)} aria-label={b.visible ? "Ẩn" : "Hiện"} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all">{b.visible ? <EyeOff size={14} /> : <Eye size={14} />}</button>
-                <button onClick={() => deleteBanner(b.id)} aria-label="Xóa" className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all"><Trash2 size={14} /></button>
+                <button onClick={() => toggleVisible(b)} disabled={rowBusy} aria-label={b.visible ? "Ẩn" : "Hiện"} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all">
+                  {rowBusy ? <Loader2 size={14} className="animate-spin" /> : b.visible ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+                <button onClick={() => deleteBanner(b.id)} disabled={rowBusy} aria-label="Xóa" className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all"><Trash2 size={14} /></button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

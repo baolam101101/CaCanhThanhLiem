@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, Eye, EyeOff, X, Upload, Video } from "lucide-react";
+import { Plus, Trash2, Eye, EyeOff, X, Upload, Video, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
 import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { useBusy } from "@/lib/hooks/use-busy";
 import { checkFileForBucket } from "@/lib/admin/media";
 import type { AdminVideo } from "@/lib/admin/repo";
 
@@ -15,7 +16,8 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
   const [videos,   setVideos]   = useState<AdminVideo[]>(initialVideos);
   const [showForm, setShowForm] = useState(false);
   const [form,     setForm]     = useState<{ title: string; file: File | null; preview: string }>({ title: "", file: null, preview: "" });
-  const [saving,   setSaving]   = useState(false);
+  const { run, isBusy } = useBusy();
+  const saving = isBusy("save");
   const [formErr,  setFormErr]  = useState("");
   const [toast,    setToast]    = useState<string|null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -41,27 +43,32 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
   const save = async () => {
     if (!form.file) { setFormErr("Vui lòng chọn file video"); return; }
     if (!form.title.trim()) { setFormErr("Vui lòng nhập tiêu đề video"); return; }
-    setSaving(true); setFormErr("");
-    try {
-      const up = await uploadMedia("site-videos", form.file);
-      await adminApi("/api/admin/videos", {
-        method: "POST",
-        body: { title: form.title, videoUrl: up.url, storagePath: up.path, fileName: form.file.name },
-      });
-      const { videos: fresh } = await adminApi<{ videos: AdminVideo[] }>("/api/admin/videos");
-      setVideos(fresh);
+    setFormErr("");
+    const file = form.file;
+    const done = await run("save", async () => {
+      try {
+        const up = await uploadMedia("site-videos", file);
+        await adminApi("/api/admin/videos", {
+          method: "POST",
+          body: { title: form.title, videoUrl: up.url, storagePath: up.path, fileName: file.name },
+        });
+        const { videos: fresh } = await adminApi<{ videos: AdminVideo[] }>("/api/admin/videos");
+        setVideos(fresh);
+        return true;
+      } catch (e) {
+        setFormErr((e as Error).message);
+        return false;
+      }
+    });
+    if (done) {
       URL.revokeObjectURL(form.preview);
       setForm({ title: "", file: null, preview: "" });
       setShowForm(false);
       msg("Đã thêm video thành công");
-    } catch (e) {
-      setFormErr((e as Error).message);
-    } finally {
-      setSaving(false);
     }
   };
 
-  const toggle = async (v: AdminVideo) => {
+  const toggle = (v: AdminVideo) => run(`row:${v.id}`, async () => {
     const visible = !v.visible;
     setVideos((list) => list.map((x) => (x.id === v.id ? { ...x, visible } : x)));
     try {
@@ -71,16 +78,18 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
       setVideos((list) => list.map((x) => (x.id === v.id ? { ...x, visible: v.visible } : x)));
       msg((e as Error).message);
     }
-  };
+  });
 
-  const del = async (id: string) => {
+  const del = (id: string) => {
     const v = videos.find((x) => x.id === id);
     if (!v || !confirm(`Xoá video "${v.title}"?`)) return;
-    try {
-      await adminApi(`/api/admin/videos/${id}`, { method: "DELETE" });
-      setVideos((list) => list.filter((x) => x.id !== id));
-      msg("Đã xoá video");
-    } catch (e) { msg((e as Error).message); }
+    return run(`row:${id}`, async () => {
+      try {
+        await adminApi(`/api/admin/videos/${id}`, { method: "DELETE" });
+        setVideos((list) => list.filter((x) => x.id !== id));
+        msg("Đã xoá video");
+      } catch (e) { msg((e as Error).message); }
+    });
   };
 
   return (
@@ -96,7 +105,9 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
       {!configured && <NotConfiguredNotice />}
 
       <div className="flex flex-col gap-2.5">
-        {videos.map((v) => (
+        {videos.map((v) => {
+          const rowBusy = isBusy(`row:${v.id}`);
+          return (
           <div key={v.id} className={cn("bg-white rounded-xl border border-surface-200 shadow-card flex items-center gap-4 px-4 py-3.5 transition-opacity",!v.visible&&"opacity-55")}>
             <button
               onClick={() => v.url && setPreviewing(v)}
@@ -114,13 +125,14 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
               <p className="text-xs text-surface-400 mt-0.5">{new Date(v.uploadedAt).toLocaleDateString("vi-VN")}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <button onClick={() => toggle(v)} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 transition-all" title={v.visible?"Ẩn":"Hiện"}>
-                {v.visible?<EyeOff size={15} aria-hidden />:<Eye size={15} aria-hidden />}
+              <button onClick={() => toggle(v)} disabled={rowBusy} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all" title={v.visible?"Ẩn":"Hiện"}>
+                {rowBusy ? <Loader2 size={15} className="animate-spin" aria-label="Đang xử lý" /> : v.visible?<EyeOff size={15} aria-hidden />:<Eye size={15} aria-hidden />}
               </button>
-              <button onClick={() => del(v.id)} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all" title="Xóa"><Trash2 size={15} aria-hidden /></button>
+              <button onClick={() => del(v.id)} disabled={rowBusy} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa"><Trash2 size={15} aria-hidden /></button>
             </div>
           </div>
-        ))}
+          );
+        })}
         {videos.length===0&&(
           <div className="text-center py-16 text-surface-400">
             <Video size={40} className="mx-auto mb-3 opacity-30" />
@@ -166,7 +178,7 @@ export function AdminVideosClient({ initialVideos, configured }: { initialVideos
               </div>
               {saving && <p className="text-xs text-brand-600 animate-pulse" aria-live="polite">Đang tải video lên, video lớn có thể mất vài phút…</p>}
               <div className="flex gap-3 pt-1">
-                <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={saving}>Lưu video</Button>
+                <Button variant="primary" className="flex-1" onClick={save} loading={saving}>Lưu video</Button>
                 <Button variant="outline" onClick={closeForm} disabled={saving}>Hủy</Button>
               </div>
             </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Plus, Trash2, X, Shield, User, Eye, EyeOff, AlertCircle, KeyRound } from "lucide-react";
+import { Plus, Trash2, X, Shield, User, Eye, EyeOff, AlertCircle, KeyRound, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { useBusy } from "@/lib/hooks/use-busy";
 import type { Account } from "@/lib/auth/accounts";
 
 interface AdminAccountsClientProps {
@@ -18,11 +19,12 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
   const [pwTarget, setPwTarget] = useState<Account | null>(null);
   const [pwForm, setPwForm]     = useState({ password: "", confirm: "" });
   const [pwError, setPwError]   = useState("");
-  const [pwSaving, setPwSaving] = useState(false);
+  const { run, isBusy } = useBusy();
+  const pwSaving = isBusy("password");
   const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
-  const [loading, setLoading]     = useState(false);
+  const loading = isBusy("create");
   const [form, setForm] = useState({ username: "", password: "", displayName: "" });
   const [showPw, setShowPw] = useState(false);
   const [formError, setFormError] = useState("");
@@ -49,37 +51,46 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
     if (form.password.length < MIN_PASSWORD) {
       setFormError(`Mật khẩu tối thiểu ${MIN_PASSWORD} ký tự`); return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) { setFormError(data.error); return; }
-      await loadAccounts();
+    const done = await run("create", async () => {
+      try {
+        const res = await fetch("/api/admin/accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form),
+        });
+        const data = await res.json();
+        if (!res.ok) { setFormError(data.error); return false; }
+        await loadAccounts();
+        return true;
+      } catch {
+        setFormError("Lỗi kết nối");
+        return false;
+      }
+    });
+    if (done) {
       setShowModal(false);
       setForm({ username: "", password: "", displayName: "" });
       showMsg("Đã tạo tài khoản thành công!");
-    } catch {
-      setFormError("Lỗi kết nối");
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
+  const handleDelete = (id: string, name: string) => {
     if (!confirm(`Xóa tài khoản "${name}"? Hành động không thể hoàn tác.`)) return;
-    const res = await fetch("/api/admin/accounts", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
+    return run(`row:${id}`, async () => {
+      try {
+        const res = await fetch("/api/admin/accounts", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { showMsg(data.error ?? "Không xóa được tài khoản", false); return; }
+        await loadAccounts();
+        showMsg(`Đã xóa tài khoản "${name}"`);
+      } catch {
+        showMsg("Lỗi kết nối", false);
+      }
     });
-    const data = await res.json();
-    if (!res.ok) { showMsg(data.error, false); return; }
-    await loadAccounts();
-    showMsg(`Đã xóa tài khoản "${name}"`);
   };
 
   const openPassword = (acc: Account) => {
@@ -91,21 +102,26 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
     if (!pwTarget) return;
     if (pwForm.password.length < MIN_PASSWORD) { setPwError(`Mật khẩu tối thiểu ${MIN_PASSWORD} ký tự`); return; }
     if (pwForm.password !== pwForm.confirm) { setPwError("Hai mật khẩu không khớp"); return; }
-    setPwSaving(true); setPwError("");
-    try {
-      const res = await fetch("/api/admin/accounts", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: pwTarget.id, password: pwForm.password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setPwError(data.error ?? "Không đổi được mật khẩu"); return; }
-      showMsg(`Đã đổi mật khẩu cho "${pwTarget.displayName}"`);
+    setPwError("");
+    const target = pwTarget;
+    const done = await run("password", async () => {
+      try {
+        const res = await fetch("/api/admin/accounts", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: target.id, password: pwForm.password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { setPwError(data.error ?? "Không đổi được mật khẩu"); return false; }
+        return true;
+      } catch {
+        setPwError("Lỗi kết nối");
+        return false;
+      }
+    });
+    if (done) {
+      showMsg(`Đã đổi mật khẩu cho "${target.displayName}"`);
       setPwTarget(null);
-    } catch {
-      setPwError("Lỗi kết nối");
-    } finally {
-      setPwSaving(false);
     }
   };
 
@@ -184,10 +200,11 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
               {acc.role !== "superadmin" && acc.id !== currentUserId && (
                 <button
                   onClick={() => handleDelete(acc.id, acc.displayName)}
-                  className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 transition-all shrink-0"
+                  disabled={isBusy(`row:${acc.id}`)}
+                  className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:pointer-events-none transition-all shrink-0"
                   aria-label={`Xóa tài khoản ${acc.displayName}`}
                 >
-                  <Trash2 size={15} />
+                  {isBusy(`row:${acc.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
                 </button>
               )}
             </li>
@@ -230,7 +247,7 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
               value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))}
               className="h-11 w-full rounded-xl border border-surface-200 px-4 text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100" />
             <div className="flex gap-3 pt-1">
-              <Button type="submit" variant="primary" className="flex-1" loading={pwSaving} disabled={pwSaving}>Đổi mật khẩu</Button>
+              <Button type="submit" variant="primary" className="flex-1" loading={pwSaving}>Đổi mật khẩu</Button>
               <Button type="button" variant="outline" onClick={() => setPwTarget(null)} disabled={pwSaving}>Hủy</Button>
             </div>
           </form>
@@ -241,12 +258,12 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
       {showModal && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={(e) => e.target === e.currentTarget && setShowModal(false)}
+          onClick={(e) => e.target === e.currentTarget && !loading && setShowModal(false)}
         >
           <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-float p-7">
             <div className="flex items-center justify-between mb-6">
               <h2 className="font-display text-xl font-light text-surface-800">Tạo tài khoản mới</h2>
-              <button onClick={() => setShowModal(false)} className="p-2 rounded-lg hover:bg-surface-100">
+              <button onClick={() => setShowModal(false)} disabled={loading} className="p-2 rounded-lg hover:bg-surface-100">
                 <X size={18} />
               </button>
             </div>
@@ -302,7 +319,7 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
                 <Button type="submit" variant="primary" className="flex-1" loading={loading}>
                   Tạo tài khoản
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)} disabled={loading}>
                   Hủy
                 </Button>
               </div>

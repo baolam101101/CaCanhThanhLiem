@@ -5,25 +5,32 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Lock, User, ArrowRight, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBusy } from "@/lib/hooks/use-busy";
 
 export function AdminLoginClient() {
   const router = useRouter();
   const [form,    setForm]    = useState({ username: "", password: "" });
   const [showPw,  setShowPw]  = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
+  const { run, isBusy } = useBusy();
+  const loading = isBusy("login");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.username.trim() || !form.password.trim()) { setError("Vui lòng điền đầy đủ thông tin"); return; }
-    setLoading(true); setError("");
-    try {
-      const res  = await fetch("/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Đăng nhập thất bại"); return; }
-      router.push("/admin"); router.refresh();
-    } catch { setError("Không thể kết nối. Vui lòng thử lại."); }
-    finally   { setLoading(false); }
+    setError("");
+    // A failed attempt holds the form for the full delay; a successful
+    // one navigates away straight off.
+    const failure = await run("login", async () => {
+      try {
+        const res  = await fetch("/api/admin/login", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return (data.error as string | undefined) ?? "Đăng nhập thất bại";
+        router.push("/admin"); router.refresh();
+        return null;
+      } catch { return "Không thể kết nối. Vui lòng thử lại."; }
+    });
+    if (failure) setError(failure);
   };
 
   return (
