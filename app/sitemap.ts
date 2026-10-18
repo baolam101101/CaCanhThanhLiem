@@ -31,6 +31,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: url("/news"), lastModified: latest(news.map((n) => n.updatedAt)), changeFrequency: "weekly", priority: 0.7 },
     { url: url("/about"), changeFrequency: "monthly", priority: 0.5 },
     { url: url("/contact"), changeFrequency: "monthly", priority: 0.5 },
+    { url: url("/chinh-sach-bao-hanh"), changeFrequency: "yearly", priority: 0.4 },
+    { url: url("/huong-dan-cham-soc-ca-koi"), changeFrequency: "yearly", priority: 0.5 },
     ...products.map((p) => {
       const image = getPrimaryImageUrl(p);
       return {

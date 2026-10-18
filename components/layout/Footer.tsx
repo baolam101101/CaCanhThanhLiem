@@ -121,8 +121,8 @@ export function Footer() {
                 { label: "Về chúng tôi", href: "/about" },
                 { label: "Sản phẩm", href: "/products" },
                 { label: "Liên hệ", href: "/contact" },
-                { label: "Chính sách bảo hành", href: "/contact" },
-                { label: "Hướng dẫn chăm sóc cá Koi", href: "/about" },
+                { label: "Chính sách bảo hành", href: "/chinh-sach-bao-hanh" },
+                { label: "Hướng dẫn chăm sóc cá Koi", href: "/huong-dan-cham-soc-ca-koi" },
               ].map((l) => (
                 <li key={l.href + l.label}>
                   <Link href={l.href} className="text-sm text-surface-800 hover:text-surface-900 font-medium transition-colors hover:translate-x-0.5 inline-block">
