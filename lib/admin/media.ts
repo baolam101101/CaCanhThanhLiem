@@ -3,13 +3,21 @@
 // a file before uploading it) and the server (to refuse issuing an
 // upload URL for it).
 
+//
+// Videos are capped at 10 MB: every view streams the whole file out of
+// Supabase Storage, and the Free plan's monthly bandwidth is small.
+// Photos are shrunk in the browser before upload (lib/admin/client.ts),
+// so a phone photo fits well under its limit.
 export const MEDIA_BUCKETS = {
   "product-images": { kind: "image", maxBytes: 5 * 1024 * 1024 },
-  "product-videos": { kind: "video", maxBytes: 50 * 1024 * 1024 },
+  "product-videos": { kind: "video", maxBytes: 10 * 1024 * 1024 },
   banners:          { kind: "image", maxBytes: 8 * 1024 * 1024 },
-  "site-videos":    { kind: "video", maxBytes: 50 * 1024 * 1024 },
+  "site-videos":    { kind: "video", maxBytes: 10 * 1024 * 1024 },
   "news-images":    { kind: "image", maxBytes: 5 * 1024 * 1024 },
 } as const;
+
+/** Bytes as whole megabytes, for messages. */
+export const mb = (bytes: number) => Math.round(bytes / 1024 / 1024);
 
 export type MediaBucket = keyof typeof MEDIA_BUCKETS;
 
@@ -33,7 +41,10 @@ export function checkFileForBucket(bucket: MediaBucket, file: { type: string; si
       : `${label} không phải video MP4, WebM hoặc MOV`;
   }
   if (file.size > rule.maxBytes) {
-    return `${label} vượt quá ${Math.round(rule.maxBytes / 1024 / 1024)} MB`;
+    const size = (file.size / 1024 / 1024).toFixed(1).replace(".", ",");
+    return rule.kind === "video"
+      ? `${label} nặng ${size} MB, vượt quá giới hạn ${mb(rule.maxBytes)} MB. Hãy quay video ngắn hơn hoặc nén video (ví dụ bằng ứng dụng nén video trên điện thoại) rồi thử lại.`
+      : `${label} nặng ${size} MB, vượt quá giới hạn ${mb(rule.maxBytes)} MB`;
   }
   return null;
 }

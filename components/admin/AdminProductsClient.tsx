@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useMemo, useRef } from "react";
-import { Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload, Video, ImageIcon, Loader2 } from "lucide-react";
+import { Plus, Search, Edit2, Eye, EyeOff, Trash2, X, Upload, Video, ImageIcon, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn, getPrimaryImageUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
-import { adminApi, uploadMedia } from "@/lib/admin/client";
-import { checkFileForBucket } from "@/lib/admin/media";
+import { adminApi, shrinkImage, uploadMedia } from "@/lib/admin/client";
+import { checkFileForBucket, MEDIA_BUCKETS, mb } from "@/lib/admin/media";
 import { useBusy } from "@/lib/hooks/use-busy";
 import type { Category, Product, ProductStatus } from "@/types";
 
@@ -71,18 +71,27 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
   const [previewIdx, setPreviewIdx] = useState<number | null>(null);
   const [replaceTargetId, setReplaceTargetId] = useState<string | null>(null);
 
-  // Validate locally (same limits as the Storage buckets) and preview via blob: URL.
-  const toItem = (file: File): MediaItem | null => {
-    const type: "image" | "video" = file.type.startsWith("video/") ? "video" : "image";
+  const [preparing, setPreparing] = useState(false);
+
+  // Shrink photos, validate against the Storage limits, preview via blob: URL.
+  const toItem = async (original: File): Promise<MediaItem | null> => {
+    const type: "image" | "video" = original.type.startsWith("video/") ? "video" : "image";
+    const file = type === "image" ? await shrinkImage(original) : original;
     const problem = checkFileForBucket(bucketFor(type), file);
     if (problem) { alert(problem); return null; }
-    return { key: newKey(), type, url: URL.createObjectURL(file), name: file.name, file };
+    return { key: newKey(), type, url: URL.createObjectURL(file), name: original.name, file };
   };
 
-  const addFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const items = Array.from(files).map(toItem).filter((m): m is MediaItem => m !== null);
-    onChange([...media, ...items]);
+  const addFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0 || preparing) return;
+    const list = Array.from(files);
+    setPreparing(true);
+    try {
+      const items = (await Promise.all(list.map(toItem))).filter((m): m is MediaItem => m !== null);
+      onChange([...media, ...items]);
+    } finally {
+      setPreparing(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -92,15 +101,30 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
 
   const remove = (key: string) => onChange(media.filter((m) => m.key !== key));
 
-  const replaceMedia = (file: File) => {
+  const replaceMedia = async (file: File) => {
     if (!replaceTargetId) return;
-    const item = toItem(file);
-    if (item) onChange(media.map((m) => (m.key === replaceTargetId ? item : m)));
+    const target = replaceTargetId;
     setReplaceTargetId(null);
+    setPreparing(true);
+    try {
+      const item = await toItem(file);
+      if (item) onChange(media.map((m) => (m.key === target ? item : m)));
+    } finally {
+      setPreparing(false);
+    }
   };
 
   // The thumbnail is the first image (videos are never thumbnails).
   const coverIdx = media.findIndex((m) => m.type === "image");
+
+  // Touch screens have no HTML drag-and-drop, so tiles also get arrows.
+  const shift = (i: number, by: -1 | 1) => {
+    const j = i + by;
+    if (j < 0 || j >= media.length) return;
+    const arr = [...media];
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+    onChange(arr);
+  };
 
   const onDrop = (targetIdx: number) => {
     if (dragIdx === null || dragIdx === targetIdx) { setDragIdx(null); setOverIdx(null); return; }
@@ -117,7 +141,7 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <p className="text-sm font-medium text-surface-700">Hình ảnh & Video</p>
-          <p className="text-xs text-surface-400 mt-0.5">Ảnh đầu tiên là ảnh bìa · Kéo thả để sắp xếp</p>
+          <p className="text-xs text-surface-400 mt-0.5">Ảnh đầu tiên là ảnh bìa · Kéo thả hoặc bấm mũi tên để sắp xếp</p>
         </div>
         <div className="flex gap-2">
           <input ref={imgRef} type="file" accept="image/*" multiple className="hidden"
@@ -126,13 +150,13 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
             onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
           <input ref={replaceRef} type="file" accept="image/*,video/*" className="hidden"
             onChange={(e) => { const f = e.target.files?.[0]; if (f) replaceMedia(f); e.target.value = ""; }} />
-          <button type="button" onClick={() => imgRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-600 hover:border-brand-400 hover:text-brand-600 transition-all">
-            <ImageIcon size={13} aria-hidden /> Thêm ảnh
+          <button type="button" onClick={() => imgRef.current?.click()} disabled={preparing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-surface-200 text-xs font-medium text-surface-600 hover:border-brand-400 hover:text-brand-600 disabled:opacity-50 transition-all">
+            <ImageIcon size={14} aria-hidden /> Thêm ảnh
           </button>
-          <button type="button" onClick={() => vidRef.current?.click()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-surface-200 text-xs font-medium text-surface-600 hover:border-brand-400 hover:text-brand-600 transition-all">
-            <Video size={13} aria-hidden /> Thêm video
+          <button type="button" onClick={() => vidRef.current?.click()} disabled={preparing}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-surface-200 text-xs font-medium text-surface-600 hover:border-brand-400 hover:text-brand-600 disabled:opacity-50 transition-all">
+            <Video size={14} aria-hidden /> Thêm video
           </button>
         </div>
       </div>
@@ -150,7 +174,7 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
           )}>
           <Upload size={24} className="mx-auto mb-2 text-surface-300" aria-hidden />
           <p className="text-sm font-medium text-surface-600">Kéo thả hoặc nhấn để thêm ảnh / video</p>
-          <p className="text-xs text-surface-400 mt-1">Ảnh JPG, PNG, WebP tối đa 5 MB · Video MP4, MOV tối đa 50 MB</p>
+          <p className="text-xs text-surface-400 mt-1">Ảnh JPG, PNG, WebP (tự động nén) · Video MP4, MOV tối đa {mb(MEDIA_BUCKETS["product-videos"].maxBytes)} MB</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -175,14 +199,28 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
                   : <video src={item.url} className="w-full h-full object-cover" muted playsInline preload="metadata" />
                 }
               </div>
-              {/* Hover overlay — click opens preview, X removes directly */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); remove(item.key); }}
-                  className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center transition-all hover:bg-red-700 absolute top-1 right-1"
-                  aria-label="Xóa">
-                  <Trash2 size={12} aria-hidden />
+              {/* Tap opens the preview; delete and reorder are always visible
+                  (a hover-only button is invisible yet tappable on a phone). */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); remove(item.key); }}
+                className="absolute top-1 right-1 w-8 h-8 rounded-full bg-red-600/90 text-white flex items-center justify-center shadow hover:bg-red-700"
+                aria-label={`Xóa ${item.name}`}>
+                <Trash2 size={14} aria-hidden />
+              </button>
+              <div className="absolute bottom-1 inset-x-1 flex justify-between">
+                <button type="button" disabled={i === 0}
+                  onClick={(e) => { e.stopPropagation(); shift(i, -1); }}
+                  className="w-8 h-8 rounded-full bg-white/90 text-surface-700 flex items-center justify-center shadow disabled:invisible"
+                  aria-label="Đưa lên trước">
+                  <ChevronLeft size={16} aria-hidden />
+                </button>
+                <button type="button" disabled={i === media.length - 1}
+                  onClick={(e) => { e.stopPropagation(); shift(i, 1); }}
+                  className="w-8 h-8 rounded-full bg-white/90 text-surface-700 flex items-center justify-center shadow disabled:invisible"
+                  aria-label="Đưa ra sau">
+                  <ChevronRight size={16} aria-hidden />
                 </button>
               </div>
               {/* Badge */}
@@ -197,10 +235,10 @@ function MediaUploader({ media, onChange }: { media: MediaItem[]; onChange: (m: 
             </div>
           ))}
           {/* Add more */}
-          <button type="button" onClick={() => imgRef.current?.click()}
+          <button type="button" onClick={() => imgRef.current?.click()} disabled={preparing}
             className="aspect-square rounded-xl border-2 border-dashed border-surface-200 hover:border-brand-400 hover:bg-brand-50 transition-all flex flex-col items-center justify-center gap-1 text-surface-400 hover:text-brand-600">
-            <Plus size={18} aria-hidden />
-            <span className="text-[10px] font-medium">Thêm</span>
+            {preparing ? <Loader2 size={18} className="animate-spin" aria-hidden /> : <Plus size={18} aria-hidden />}
+            <span className="text-[10px] font-medium">{preparing ? "Đang nén ảnh…" : "Thêm"}</span>
           </button>
         </div>
       )}
@@ -399,7 +437,8 @@ function ProductModal({ mode, product, categories, onSave, onClose }: {
 
           {progress && <p className="text-xs text-brand-600 animate-pulse" aria-live="polite">{progress}</p>}
 
-          <div className="flex gap-3 pt-1">
+          {/* Kept in view on phones: these forms are longer than the screen. */}
+          <div className="sticky bottom-0 z-10 -mx-5 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-surface-100 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-1 sm:border-0 flex gap-3">
             <Button variant="primary" className="flex-1" onClick={submit} loading={saving}>
               {mode === "add" ? "Thêm sản phẩm" : "Lưu thay đổi"}
             </Button>
@@ -471,7 +510,7 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
     for (const m of data.media) {
       if (m.file) {
         progress(`Đang tải lên ${++done}/${pending.length}: ${m.name}`);
-        const up = await uploadMedia(bucketFor(m.type), m.file);
+        const up = await uploadMedia(bucketFor(m.type), m.file, { shrunk: true });
         media.push({ type: m.type, url: up.url, storagePath: up.path });
       } else {
         media.push({ id: m.id, type: m.type, url: m.url });
@@ -529,7 +568,52 @@ export function AdminProductsClient({ initialProducts, categories, configured }:
           className="w-full pl-9 pr-4 py-2 rounded-xl border border-surface-200 bg-white text-sm outline-none focus:border-brand-500 focus:ring-3 focus:ring-brand-100" />
       </div>
 
-      <div className="bg-white rounded-xl border border-surface-200 shadow-card overflow-hidden">
+      {/* Phones: one card per product, actions always in reach. */}
+      <ul className="md:hidden flex flex-col gap-2.5">
+        {filtered.map((p) => {
+          const rowBusy = isBusy(`row:${p.id}`);
+          return (
+            <li key={p.id} className={cn("bg-white rounded-xl border border-surface-200 shadow-card p-3 flex gap-3", p.status === "hidden" && "opacity-60")}>
+              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-surface-200">
+                <ProductThumbnail name={p.name} imageUrl={getPrimaryImageUrl(p)} />
+              </div>
+              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                <p className="text-sm font-semibold text-surface-800 line-clamp-2 leading-snug">{p.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Badge variant={sVariant(p.status)} className="text-[10px]">{sLabel(p.status)}</Badge>
+                  {p.tags.includes("new")      && <Badge variant="new"      className="text-[10px]">Mới</Badge>}
+                  {p.tags.includes("featured") && <Badge variant="featured" className="text-[10px]">Nổi bật</Badge>}
+                  <span className="text-xs text-surface-400 truncate">{p.category}</span>
+                </div>
+                <div className="flex items-center gap-1 -ml-2">
+                  <button onClick={() => { setEditing(p); setModalMode("edit"); }}
+                    className="w-10 h-10 inline-flex items-center justify-center rounded-lg text-surface-500 active:bg-brand-50" aria-label={`Sửa ${p.name}`}>
+                    <Edit2 size={16} aria-hidden />
+                  </button>
+                  <button onClick={() => toggleStatus(p)} disabled={rowBusy}
+                    className="w-10 h-10 inline-flex items-center justify-center rounded-lg text-surface-500 active:bg-amber-50 disabled:pointer-events-none"
+                    aria-label={p.status === "hidden" ? `Hiện ${p.name}` : `Ẩn ${p.name}`}>
+                    {rowBusy ? <Loader2 size={16} className="animate-spin" aria-hidden />
+                      : p.status === "hidden" ? <Eye size={16} aria-hidden /> : <EyeOff size={16} aria-hidden />}
+                  </button>
+                  <button onClick={() => deleteProduct(p)} disabled={rowBusy}
+                    className="w-10 h-10 inline-flex items-center justify-center rounded-lg text-surface-500 active:bg-red-50 disabled:opacity-30 disabled:pointer-events-none"
+                    aria-label={`Xóa ${p.name}`}>
+                    <Trash2 size={16} aria-hidden />
+                  </button>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+        {filtered.length === 0 && (
+          <li className="py-12 text-center text-sm text-surface-400 bg-white rounded-xl border border-surface-200">
+            {products.length === 0 ? "Chưa có sản phẩm nào" : "Không tìm thấy sản phẩm"}
+          </li>
+        )}
+      </ul>
+
+      <div className="hidden md:block bg-white rounded-xl border border-surface-200 shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[540px]">
             <thead>

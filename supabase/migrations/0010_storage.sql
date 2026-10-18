@@ -12,9 +12,10 @@
 --   * site-videos     — the homepage "Video thực tế" section
 --   * news-images     — news featured / inline images
 --
--- Video buckets are capped at 50 MB: the Supabase Free plan's global
--- per-file limit, which no bucket can exceed. Raise them (and the
--- matching checks in the admin panel) after moving to a paid plan.
+-- Video buckets are capped at 10 MB (the Free plan allows up to 50 MB
+-- per file): each view streams the whole file out of Storage, and the
+-- Free plan's monthly bandwidth is small. Keep lib/admin/media.ts in
+-- step with these limits.
 --
 -- Idempotent: safe to re-run. Buckets are upserted and policies are
 -- dropped and recreated.
@@ -31,9 +32,9 @@
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values
   ('product-images', 'product-images', true,  5242880, array['image/jpeg','image/png','image/webp','image/gif']),
-  ('product-videos', 'product-videos', true, 52428800, array['video/mp4','video/webm','video/quicktime']),
+  ('product-videos', 'product-videos', true, 10485760, array['video/mp4','video/webm','video/quicktime']),
   ('banners',        'banners',        true,  8388608, array['image/jpeg','image/png','image/webp']),
-  ('site-videos',    'site-videos',    true, 52428800, array['video/mp4','video/webm','video/quicktime']),
+  ('site-videos',    'site-videos',    true, 10485760, array['video/mp4','video/webm','video/quicktime']),
   ('news-images',    'news-images',    true,  5242880, array['image/jpeg','image/png','image/webp','image/gif'])
 on conflict (id) do update
   set public             = excluded.public,

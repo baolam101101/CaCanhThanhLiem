@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductCard } from "./ProductCard";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -62,12 +62,12 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
     <div className="section-pad bg-white">
       <div className="container-site">
 
-        {/* Category pills */}
-        <div className="mb-6 flex flex-wrap gap-2">
+        {/* Category pills: one swipeable row on phones, wrapping from sm up */}
+        <div className="mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 scroll-x sm:flex-wrap">
           <button
             onClick={() => setActiveCategory(null)}
             className={cn(
-              "px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
+              "shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
               activeCategory === null
                 ? "text-surface-900 border-transparent shadow-sm"
                 : "bg-white text-surface-600 border-surface-200 hover:border-surface-400"
@@ -81,7 +81,7 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
               key={cat.slug}
               onClick={() => setActiveCategory(activeCategory === cat.slug ? null : cat.slug)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
+                "shrink-0 whitespace-nowrap flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
                 activeCategory === cat.slug
                   ? "text-surface-900 border-transparent shadow-sm"
                   : "bg-white text-surface-600 border-surface-200 hover:border-surface-400"
@@ -95,7 +95,7 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
 
         {/* Filter bar */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1 max-w-sm">
+          <div className="relative flex-1 sm:max-w-sm">
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-surface-400 pointer-events-none" aria-hidden />
             <input
               type="search"
@@ -112,13 +112,13 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
             )}
           </div>
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-2 scroll-x sm:flex-wrap">
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => setStatusFilter(f.key)}
                 className={cn(
-                  "px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
+                  "shrink-0 whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200",
                   statusFilter === f.key
                     ? "bg-surface-800 text-white border-surface-800"
                     : "bg-white text-surface-600 border-surface-200 hover:border-surface-400"
@@ -144,10 +144,6 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
           <p className="text-sm text-surface-400">
             <span className="font-semibold text-surface-700">{filtered.length}</span> sản phẩm
           </p>
-          <div className="flex items-center gap-2 text-sm text-surface-400">
-            <SlidersHorizontal size={14} aria-hidden />
-            <span>Sắp xếp: Mặc định</span>
-          </div>
         </div>
 
         {/* Grid */}
@@ -159,7 +155,7 @@ export function ProductsClient({ initialProducts, categories }: ProductsClientPr
             action={{ label: "Xóa bộ lọc", onClick: clearFilters }}
           />
         ) : (
-          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 md:gap-6" role="list">
+          <ul className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 md:gap-6" role="list">
             {filtered.map((product) => (
               <li key={product.id}>
                 <ProductCard product={product} />

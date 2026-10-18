@@ -135,6 +135,11 @@
   input, textarea, select {
     font-family: var(--font-body);
     font-size: 16px;
+  }
+  /* Strip native styling from text fields only: on a range slider it
+     removes the track, leaving a bare thumb (the image zoom control). */
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  textarea, select {
     -webkit-appearance: none;
   }
   @media (hover: none) and (pointer: coarse) {
@@ -173,4 +178,14 @@
   background: linear-gradient(90deg, var(--color-surface-100) 25%, var(--color-surface-200) 50%, var(--color-surface-100) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* iOS Safari zooms the page when a field under 16px is focused, which
+   happened on every admin input (text-sm). Unlayered, so it wins over
+   the text-* utilities, and only on phone widths. */
+@media (max-width: 767px) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+  textarea, select {
+    font-size: 16px;
+  }
 }

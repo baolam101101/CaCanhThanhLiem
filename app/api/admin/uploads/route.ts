@@ -5,7 +5,7 @@ import { checkFileForBucket, isMediaBucket } from "@/lib/admin/media";
 
 // POST — issue a signed URL the browser uploads one file to.
 // Files go straight from the browser to Supabase Storage: a serverless
-// function body is capped at a few MB, far below a 50 MB video.
+// function body is capped at a few MB, below a 10 MB video.
 export async function POST(req: Request) {
   const ctx = await adminContext();
   if (ctx instanceof NextResponse) return ctx;

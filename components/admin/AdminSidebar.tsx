@@ -255,7 +255,7 @@ export function AdminSidebar({ role, displayName, collapsed, onToggleCollapse }:
             <Image src="/images/logo.jpg" alt="Logo" fill className="object-cover rounded-lg border border-white/20" sizes="28px" />
           </div>
           <span className="font-display text-sm text-white font-semibold truncate">Thanh Liêm</span>
-          <button onClick={() => setMobileOpen(false)} className="ml-auto p-1 text-white/40 hover:text-white shrink-0">
+          <button onClick={() => setMobileOpen(false)} aria-label="Đóng menu" className="ml-auto w-10 h-10 inline-flex items-center justify-center rounded-lg text-white/40 hover:text-white shrink-0">
             <X size={18} aria-hidden />
           </button>
         </div>

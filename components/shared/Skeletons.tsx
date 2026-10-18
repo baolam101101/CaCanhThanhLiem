@@ -33,12 +33,12 @@ function PageHeaderSkeleton() {
   );
 }
 
-function CardGrid({ count, media }: { count: number; media: string }) {
+function CardGrid({ count, media, twoUp = true }: { count: number; media: string; twoUp?: boolean }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div className={cn("grid gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4", twoUp ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-2")}>
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="rounded-2xl border border-surface-200 bg-white overflow-hidden">
-          <Bone className={cn("rounded-none", media)} />
+          <Bone className={cn("rounded-none", twoUp ? "aspect-square sm:aspect-[4/3]" : media)} />
           <div className="p-4 flex flex-col gap-2.5">
             <Bone className="h-3 w-20" />
             <Bone className="h-5 w-4/5" />
@@ -76,7 +76,7 @@ export function ListPageSkeleton({ media = "aspect-[4/3]", filters = true }: { m
             {Array.from({ length: 4 }).map((_, i) => <Bone key={i} className="h-9 w-24 rounded-full" />)}
           </div>
         )}
-        <CardGrid count={8} media={media} />
+        <CardGrid count={8} media={media} twoUp={filters} />
       </div>
     </Loading>
   );

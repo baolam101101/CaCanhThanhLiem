@@ -61,7 +61,7 @@ export default async function ProductDetailPage({ params }: Props) {
               title={<>Cá cảnh <em className="italic" style={{ color: "#8fb82a" }}>tương tự</em></>}
               className="mb-8 md:mb-10"
             />
-            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5" role="list">
+            <ul className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-5" role="list">
               {related.map((p) => (
                 <li key={p.id}><ProductCard product={p} /></li>
               ))}

@@ -131,15 +131,15 @@ export function AdminCategoriesClient({ initialCategories, configured }: { initi
 
             </div>
             <div className="flex flex-col gap-0.5 shrink-0">
-              <button onClick={() => move(cat.id, "up")} disabled={i === 0 || reordering} className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-20 transition-all"><ArrowUp size={13} /></button>
-              <button onClick={() => move(cat.id, "down")} disabled={i === sorted.length - 1 || reordering} className="p-1.5 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-20 transition-all"><ArrowDown size={13} /></button>
+              <button onClick={() => move(cat.id, "up")} disabled={i === 0 || reordering} className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-20 transition-all"><ArrowUp size={13} /></button>
+              <button onClick={() => move(cat.id, "down")} disabled={i === sorted.length - 1 || reordering} className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-20 transition-all"><ArrowDown size={13} /></button>
             </div>
             <div className="flex items-center gap-1 pl-2 border-l border-surface-100 shrink-0">
-              <button onClick={() => open("edit", cat)} className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa"><Edit2 size={14} /></button>
-              <button onClick={() => toggle(cat)} disabled={rowBusy} className="p-2 rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 disabled:pointer-events-none transition-all">
+              <button onClick={() => open("edit", cat)} className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa"><Edit2 size={14} /></button>
+              <button onClick={() => toggle(cat)} disabled={rowBusy} className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-xs font-semibold text-surface-400 hover:text-amber-700 hover:bg-amber-50 disabled:pointer-events-none transition-all">
                 {rowBusy ? <Loader2 size={14} className="animate-spin" aria-label="Đang xử lý" /> : cat.visible ? "Ẩn" : "Hiện"}
               </button>
-              <button onClick={() => del(cat)} disabled={rowBusy} className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa"><Trash2 size={14} /></button>
+              <button onClick={() => del(cat)} disabled={rowBusy} className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa"><Trash2 size={14} /></button>
             </div>
           </div>
           );

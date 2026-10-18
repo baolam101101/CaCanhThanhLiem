@@ -189,7 +189,7 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
               {/* Change password */}
               <button
                 onClick={() => openPassword(acc)}
-                className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all shrink-0"
+                className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all shrink-0"
                 aria-label={`Đổi mật khẩu ${acc.displayName}`}
                 title="Đổi mật khẩu"
               >
@@ -201,7 +201,7 @@ export function AdminAccountsClient({ initialAccounts, currentUserId }: AdminAcc
                 <button
                   onClick={() => handleDelete(acc.id, acc.displayName)}
                   disabled={isBusy(`row:${acc.id}`)}
-                  className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:pointer-events-none transition-all shrink-0"
+                  className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:pointer-events-none transition-all shrink-0"
                   aria-label={`Xóa tài khoản ${acc.displayName}`}
                 >
                   {isBusy(`row:${acc.id}`) ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}

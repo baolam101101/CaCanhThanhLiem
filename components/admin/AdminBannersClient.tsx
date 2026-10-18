@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { MediaPreviewModal } from "@/components/admin/MediaPreviewModal";
 import { ImageCropTool, computeCroppedImageStyle } from "@/components/admin/ImageCropTool";
 import { NotConfiguredNotice } from "@/components/admin/NotConfiguredNotice";
-import { adminApi, uploadMedia } from "@/lib/admin/client";
+import { adminApi, shrinkImage, uploadMedia } from "@/lib/admin/client";
 import { useBusy } from "@/lib/hooks/use-busy";
 import { checkFileForBucket } from "@/lib/admin/media";
 import type { AdminBanner } from "@/lib/admin/repo";
@@ -47,12 +47,14 @@ function BannerModal({ banner, onSave, onClose }: {
   const [error, setError] = useState("");
   const upd = (p: Partial<BannerForm>) => setForm((f) => ({ ...f, ...p }));
 
-  const handleFile = (file: File) => {
+  // Banners are shown full width, so they keep more pixels than photos.
+  const handleFile = async (original: File) => {
+    const file = await shrinkImage(original, 2400);
     const problem = checkFileForBucket("banners", file);
     if (problem) { setError(problem); return; }
     setError("");
     if (form.file) URL.revokeObjectURL(form.imageUrl);
-    upd({ file, imageUrl: URL.createObjectURL(file), imageName: file.name, objectPositionX: 50, objectPositionY: 50, zoom: 1 });
+    upd({ file, imageUrl: URL.createObjectURL(file), imageName: original.name, objectPositionX: 50, objectPositionY: 50, zoom: 1 });
   };
 
   const save = async () => {
@@ -139,7 +141,8 @@ function BannerModal({ banner, onSave, onClose }: {
             </div>
             <span className="text-sm font-medium text-surface-700">Hiển thị banner này</span>
           </label>
-          <div className="flex gap-3">
+          {/* Kept in view on phones: these forms are longer than the screen. */}
+          <div className="sticky bottom-0 z-10 -mx-5 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-surface-100 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-1 sm:border-0 flex gap-3">
             <Button variant="primary" className="flex-1" onClick={save} loading={saving}>{isNew ? "Thêm banner" : "Lưu thay đổi"}</Button>
             <Button variant="outline" onClick={onClose} disabled={saving}>Hủy</Button>
           </div>
@@ -203,7 +206,7 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
   const handleSave = async (form: BannerForm) => {
     let image: { imageUrl: string; storagePath?: string } = { imageUrl: form.imageUrl };
     if (form.file) {
-      const up = await uploadMedia("banners", form.file);
+      const up = await uploadMedia("banners", form.file, { shrunk: true });
       URL.revokeObjectURL(form.imageUrl);
       image = { imageUrl: up.url, storagePath: up.path };
     }
@@ -256,15 +259,15 @@ export function AdminBannersClient({ initialBanners, configured }: { initialBann
                 <p className="text-sm font-medium text-surface-800 truncate">{b.imageName || "Ảnh banner"}</p>
               </div>
               <div className="flex flex-col gap-0.5 shrink-0">
-                <button onClick={() => move(b.id, "up")} disabled={i === 0 || reordering} aria-label="Lên trên" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
-                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1 || reordering} aria-label="Xuống dưới" className="p-1 rounded text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
+                <button onClick={() => move(b.id, "up")} disabled={i === 0 || reordering} aria-label="Lên trên" className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowUp size={13} /></button>
+                <button onClick={() => move(b.id, "down")} disabled={i === sorted.length - 1 || reordering} aria-label="Xuống dưới" className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-25 transition-all"><ArrowDown size={13} /></button>
               </div>
               <div className="flex items-center gap-1 border-l border-surface-100 pl-2 shrink-0">
-                <button onClick={() => setEditTarget(b)} aria-label="Sửa" className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Edit2 size={14} /></button>
-                <button onClick={() => toggleVisible(b)} disabled={rowBusy} aria-label={b.visible ? "Ẩn" : "Hiện"} className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all">
+                <button onClick={() => setEditTarget(b)} aria-label="Sửa" className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all"><Edit2 size={14} /></button>
+                <button onClick={() => toggleVisible(b)} disabled={rowBusy} aria-label={b.visible ? "Ẩn" : "Hiện"} className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all">
                   {rowBusy ? <Loader2 size={14} className="animate-spin" /> : b.visible ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
-                <button onClick={() => deleteBanner(b.id)} disabled={rowBusy} aria-label="Xóa" className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all"><Trash2 size={14} /></button>
+                <button onClick={() => deleteBanner(b.id)} disabled={rowBusy} aria-label="Xóa" className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all"><Trash2 size={14} /></button>
               </div>
             </div>
             );

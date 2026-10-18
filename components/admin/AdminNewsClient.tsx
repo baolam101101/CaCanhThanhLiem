@@ -118,11 +118,11 @@ function ContentEditor({ blocks, onChange }: { blocks: NewsContentBlock[]; onCha
               </span>
               <div className="flex items-center gap-1">
                 <button type="button" onClick={() => moveBlock(i, "up")} disabled={i === 0}
-                  className="p-1 rounded text-surface-400 hover:text-brand-600 disabled:opacity-25 transition-all text-xs">↑</button>
+                  className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 disabled:opacity-25 transition-all text-xs">↑</button>
                 <button type="button" onClick={() => moveBlock(i, "down")} disabled={i === blocks.length - 1}
-                  className="p-1 rounded text-surface-400 hover:text-brand-600 disabled:opacity-25 transition-all text-xs">↓</button>
+                  className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 disabled:opacity-25 transition-all text-xs">↓</button>
                 <button type="button" onClick={() => removeBlock(i)}
-                  className="p-1 rounded text-surface-400 hover:text-red-600 transition-all"><Trash2 size={13} aria-hidden /></button>
+                  className="w-9 h-9 md:w-7 md:h-7 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-red-600 transition-all"><Trash2 size={13} aria-hidden /></button>
               </div>
             </div>
 
@@ -364,7 +364,8 @@ function NewsModal({
             <span className="text-sm font-medium text-surface-700">Hiển thị bài viết này</span>
           </label>
 
-          <div className="flex gap-3 pt-1">
+          {/* Kept in view on phones: these forms are longer than the screen. */}
+          <div className="sticky bottom-0 z-10 -mx-5 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white border-t border-surface-100 sm:static sm:mx-0 sm:px-0 sm:pb-0 sm:pt-1 sm:border-0 flex gap-3">
             <Button variant="primary" className="flex-1" onClick={save} loading={saving} disabled={uploadingFeatured}>
               {mode === "add" ? "Thêm tin tức" : "Lưu thay đổi"}
             </Button>
@@ -482,17 +483,17 @@ export function AdminNewsClient({ initialNews, configured }: { initialNews: News
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button onClick={() => { setEditing(n); setModalMode("edit"); }}
-                className="p-2 rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa">
+                className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-brand-600 hover:bg-brand-50 transition-all" title="Sửa">
                 <Edit2 size={14} aria-hidden />
               </button>
               <button onClick={() => toggleVisible(n.id)} disabled={rowBusy}
-                className="p-2 rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all"
+                className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-amber-600 hover:bg-amber-50 disabled:pointer-events-none transition-all"
                 title={n.published ? "Ẩn" : "Hiện"}>
                 {rowBusy ? <Loader2 size={14} className="animate-spin" aria-label="Đang xử lý" />
                   : n.published ? <EyeOff size={14} aria-hidden /> : <Eye size={14} aria-hidden />}
               </button>
               <button onClick={() => deleteNews(n.id)} disabled={rowBusy}
-                className="p-2 rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa">
+                className="w-10 h-10 md:w-8 md:h-8 inline-flex items-center justify-center rounded-lg text-surface-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-30 disabled:pointer-events-none transition-all" title="Xóa">
                 <Trash2 size={14} aria-hidden />
               </button>
             </div>

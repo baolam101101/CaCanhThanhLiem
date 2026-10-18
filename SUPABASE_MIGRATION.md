@@ -43,5 +43,6 @@ Thứ tự: **Danh mục** → **Sản phẩm** (cần ít nhất một danh m�
 Banner, Video. Khi chưa có banner nào, trang chủ hiện ảnh biển hiệu mặc định.
 Mục "Video thực tế" trên trang chủ chỉ hiện khi đã có video.
 
-Giới hạn file (gói Free của Supabase giới hạn 50 MB mỗi file):
-ảnh sản phẩm / tin tức 5 MB, banner 8 MB, video 50 MB.
+Giới hạn file: ảnh sản phẩm / tin tức 5 MB, banner 8 MB, video 10 MB.
+Ảnh được tự động nén trong trình duyệt trước khi tải lên. Video giới hạn
+10 MB vì mỗi lượt xem tốn băng thông của gói Free.
