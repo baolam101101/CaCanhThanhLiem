@@ -89,7 +89,6 @@ function CategoriesSection({ categories }: { categories: Category[] }) {
         <SectionHeader
           eyebrow="Danh mục"
           title={<><em className="italic" style={{ color: "#8fb82a" }}>Khám phá bộ sưu tập Cá Cảnh trực tiếp tại Trang Trại Cá Cảnh Thanh Liêm</em></>}
-          description="Cá Koi Nhật, cá nhiệt đới, cá la hán và nhiều loài quý hiếm khác."
           className="mb-8 md:mb-10"
         />
         <CategoryGrid categories={categories} />

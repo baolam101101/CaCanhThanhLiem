@@ -78,7 +78,7 @@ export function ContactClient() {
       </div>
       <div className="flex flex-col gap-4">
         <Input label="Họ và tên" placeholder="Nguyễn Văn A" value={form.name} onChange={(e) => set("name", e.target.value)} error={errors.name} required autoComplete="name" />
-        <Input label="Số điện thoại" type="tel" placeholder="0931 444 240" value={form.phone} onChange={(e) => set("phone", e.target.value)} error={errors.phone} required autoComplete="tel" />
+        <Input label="Số điện thoại" type="tel" placeholder="0909 633 203" value={form.phone} onChange={(e) => set("phone", e.target.value)} error={errors.phone} required autoComplete="tel" />
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-semibold text-surface-600">Chủ đề</label>
           <select value={form.subject} onChange={(e) => set("subject", e.target.value)} className="h-11 w-full rounded-xl border border-surface-200 bg-white px-4 text-sm outline-none focus:border-brand-400 focus:ring-3 focus:ring-brand-100">

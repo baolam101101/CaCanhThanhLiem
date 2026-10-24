@@ -462,7 +462,7 @@ create table public.site_settings (
 insert into public.site_settings (key, value, label) values
   ('store_name',    'Cá Cảnh Thanh Liêm',                                      'Tên cửa hàng'),
   ('tagline',       'Chuyên Cung Cấp Cá Chép Koi Việt - Nhập',                'Slogan'),
-  ('phone',       '0931 444 240',                                             'Số điện thoại'),
+  ('phone',       '0909 633 203',                                             'Số điện thoại'),
   ('email',         'info@cacanhthanhliem.vn',                                  'Email'),
   ('address',       '223A2 Nguyễn Văn Linh, Bình Chánh, TP.HCM',              'Địa chỉ'),
   ('facebook_url',  'https://facebook.com/CaCanhThanhLiem',                    'Facebook URL'),

@@ -5,15 +5,15 @@ export const SITE_CONFIG = {
   description:
     "Chuyên cung cấp các dòng cá chép Koi Việt - Nhập khẩu chất lượng cao tại Bình Chánh, TP.HCM.",
   url: "https://cacanhthanhliem.vn",
-  phone: "0931 444 240",
-  phoneHref: "tel:+84931444240",
+  phone: "0909 633 203",
+  phoneHref: "tel:+84909633203",
   email: "info@cacanhthanhliem.vn",
   address: "223A2 Nguyễn Văn Linh - Tổ 9 - Ấp 1 - Xã An Phú Tây - Huyện Bình Chánh",
   newAddress: "223A3/9 ấp 36, Xã Bình Chánh, TP.HCM",
   googleMapsUrl: "https://maps.google.com",
   hours: "7:30 - 17:30 (T2 -> CN & ngày Lễ)",
   facebook: "https://facebook.com/CaCanhThanhLiem",
-  zalo: "https://zalo.me/0931444240",
+  zalo: "https://zalo.me/0909633203",
   website: "www.cacanhthanhliem.vn",
   founded: 2009,
 } as const;

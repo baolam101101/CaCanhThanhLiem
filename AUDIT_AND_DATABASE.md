@@ -12,7 +12,7 @@ PHẦN 1: AUDIT TOÀN BỘ SOURCE CODE
 
 [CRITICAL] lib/constants.ts — SITE_CONFIG
   Toàn bộ thông tin cửa hàng hardcode:
-  - phone: "0931 444 240",
+  - phone: "0909 633 203",
   - address: "223A2 Nguyễn Văn Linh..."
   - email: "info@cacanhthanhliem.vn"
   - facebook: "https://facebook.com/CaCanhThanhLiem"
